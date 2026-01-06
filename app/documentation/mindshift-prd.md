@@ -195,7 +195,7 @@ const flameVariants = {
 
 **Model Choice:**
 
-- **Primary:** Claude 3.5 Sonnet (`claude-3-5-sonnet-20241022`)
+- **Primary:** Claude 3.5 Sonnet (`claude-sonnet-4-20250514`)
   - Best quality for transformation
   - ~$3 per 1M input tokens
   - Use for all transformations
@@ -212,40 +212,368 @@ const flameVariants = {
 - Built-in error handling
 - Token counting
 - TypeScript support
+- Provider-agnostic (easy to switch models)
+- Edge runtime compatible
+
+**Implementation Architecture:**
+
+```
+User Input → Next.js API Route → Vercel AI SDK → Anthropic → Stream Response
+                                                              ↓
+                                                        React Component
+```
+
+**API Route Implementation:**
+
+````typescript
+// app/api/generate/route.ts
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
+import { auth } from "@clerk/nextjs/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Self-Talk Solution methodology prompt
+const SYSTEM_PROMPT = `You are an expert in Cognitive Behavioral Therapy (CBT) and the Self-Talk Solution methodology by Shad Helmstetter.
+
+Your task is to analyze negative self-talk and transform it into empowering affirmations.
+
+ANALYSIS PHASE:
+1. Identify the Self-Talk Level (1-5):
+   - Level 1: Negative Acceptance ("I can't...", "I'll never...")
+   - Level 2: Recognition ("I should...", "I need to...")
+   - Level 3: Decision to Change ("I no longer...", "I am learning...")
+   - Level 4: The Better You ("I am...", present tense identity)
+   - Level 5: Universal Affirmation (highest spiritual level)
+
+2. Identify cognitive distortions:
+   - All-or-nothing thinking
+   - Overgeneralization
+   - Mental filtering
+   - Catastrophizing
+   - Personalization
+   - Should statements
+
+3. Identify theme: Self-worth, Competence, Relationships, Health, Career, etc.
+
+TRANSFORMATION RULES:
+Generate affirmations that are:
+- Present tense ("I am" not "I will")
+- Positive (what they ARE, not what they're NOT)
+- Personal (first person "I")
+- Believable (bridge current state to desired state)
+- Specific (address the exact fear or pattern)
+- Level 3-4 focused (Decision to Change or Better You)
+
+RESPONSE FORMAT (JSON only, no markdown):
+{
+  "analysis": {
+    "detected_level": 1-5,
+    "distortions": ["distortion1", "distortion2"],
+    "theme": "category name"
+  },
+  "affirmations": [
+    {
+      "text": "The affirmation text",
+      "level": 3 or 4,
+      "reasoning": "Brief explanation why this helps"
+    }
+  ]
+}`;
+
+export async function POST(req: Request) {
+  try {
+    // Auth check
+    const { userId } = await auth();
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get request body
+    const { negativeThought } = await req.json();
+
+    if (!negativeThought || negativeThought.length < 10) {
+      return Response.json(
+        { error: "Negative thought must be at least 10 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Get user tier from Convex (determines suggestion count)
+    const user = await convex.query(api.queries.getCurrentUser);
+    const suggestionCount = user?.tier === "free" ? 3 : 5;
+
+    // Generate with Vercel AI SDK
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: SYSTEM_PROMPT,
+      prompt: `Transform this negative thought into ${suggestionCount} empowering affirmations:\n\n"${negativeThought}"`,
+      temperature: 0.7,
+      maxTokens: 1500,
+    });
+
+    // Parse JSON response
+    let result;
+    try {
+      const cleanText = text
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      result = JSON.parse(cleanText);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", text);
+      return Response.json(
+        { error: "Failed to generate affirmations. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // Validate response structure
+    if (
+      !result.analysis ||
+      !result.affirmations ||
+      !Array.isArray(result.affirmations)
+    ) {
+      return Response.json(
+        { error: "Invalid response format from AI" },
+        { status: 500 }
+      );
+    }
+
+    // Limit to tier-appropriate count
+    result.affirmations = result.affirmations.slice(0, suggestionCount);
+
+    return Response.json(result);
+  } catch (error) {
+    console.error("Error generating affirmations:", error);
+
+    if (error instanceof Error && error.message.includes("rate_limit")) {
+      return Response.json(
+        { error: "Too many requests. Please try again in a moment." },
+        { status: 429 }
+      );
+    }
+
+    return Response.json(
+      { error: "Failed to generate affirmations. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+````
+
+**Client-Side Usage (Non-Streaming):**
+
+```typescript
+// app/(dashboard)/transform/page.tsx
+'use client';
+
+import { useState } from 'react';
+
+interface Affirmation {
+  text: string;
+  level: number;
+  reasoning: string;
+}
+
+interface GenerateResponse {
+  analysis: {
+    detected_level: number;
+    distortions: string[];
+    theme: string;
+  };
+  affirmations: Affirmation[];
+}
+
+export default function TransformPage() {
+  const [negativeThought, setNegativeThought] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<GenerateResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ negativeThought }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate');
+      }
+
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <h1>Create Affirmation</h1>
+
+      <textarea
+        value={negativeThought}
+        onChange={(e) => setNegativeThought(e.target.value)}
+        placeholder="What negative thought do you want to quit?"
+        className="w-full h-32 p-4 border rounded"
+      />
+
+      <button
+        onClick={handleGenerate}
+        disabled={isLoading || negativeThought.length < 10}
+        className="mt-4 px-6 py-3 bg-blue-500 text-white rounded"
+      >
+        {isLoading ? 'Generating...' : 'Generate Affirmations'}
+      </button>
+
+      {error && (
+        <div className="mt-4 p-4 bg-red-50 text-red-800 rounded">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-6 space-y-4">
+          {result.affirmations.map((aff, i) => (
+            <div key={i} className="p-4 border rounded">
+              <p className="font-semibold">{aff.text}</p>
+              <p className="text-sm text-gray-600 mt-2">{aff.reasoning}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Alternative: Streaming Version (Better UX - Optional)**
+
+```typescript
+// app/api/generate/stream/route.ts
+import { anthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
+import { auth } from "@clerk/nextjs/server";
+
+export async function POST(req: Request) {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { negativeThought } = await req.json();
+
+  const result = await streamText({
+    model: anthropic("claude-sonnet-4-20250514"),
+    system: SYSTEM_PROMPT,
+    prompt: `Transform: "${negativeThought}"`,
+    temperature: 0.7,
+  });
+
+  return result.toDataStreamResponse();
+}
+
+// Client usage with streaming
+import { useCompletion } from "ai/react";
+
+export default function TransformPage() {
+  const { completion, complete, isLoading } = useCompletion({
+    api: "/api/generate/stream",
+  });
+
+  // completion updates in real-time as AI generates
+  // Parse JSON when complete
+}
+```
+
+**Why This Architecture:**
+
+✅ **Next.js API Route + Vercel AI SDK:**
+
+- Better DX than Convex actions for AI
+- Can use Clerk auth middleware
+- Streaming support out of the box
+- Edge runtime compatible
+- Query Convex for user tier before generating
+
+✅ **Cost Control:**
+
+- Check user tier before API call
+- Free: 3 suggestions (~500 tokens)
+- Pro: 5 suggestions (~750 tokens)
+- Estimate: ~$0.002 per transformation
+
+✅ **Error Handling:**
+
+- Rate limiting (429)
+- JSON parsing fallback
+- User-friendly error messages
+- Sentry logging (Phase 7)
 
 ### Authentication
 
-**Convex Auth (Built-in)**
+**Clerk**
 
-**Why Convex Auth over Clerk/NextAuth:**
+**Why Clerk over Convex Auth/NextAuth:**
 
-- Integrated with Convex (fewer moving parts)
-- Free (no additional cost)
-- Simple email + Google OAuth
-- Session management included
-- Type-safe auth queries
+- Best-in-class auth UX (polished, mobile-optimized)
+- Multiple social providers (Google, GitHub, Apple)
+- User management dashboard included
+- Webhooks for user lifecycle events
+- Session management + middleware
+- Excellent mobile experience
+- Better developer experience
 
 **Auth Providers:**
 
 - Google OAuth (primary - one-click signup)
 - Email + Password (secondary)
+- GitHub (optional)
 
-**Auth Flow:**
+**Clerk + Convex Integration:**
 
 ```typescript
+// app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs'
+
+export default function RootLayout({ children }) {
+  return (
+    <ClerkProvider>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        {children}
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  )
+}
+
 // convex/auth.config.ts
-export default {
+import { convexAuth } from "@convex-dev/auth/server";
+
+export const { auth, signIn, signOut } = convexAuth({
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-    Email({
-      // Magic link or password
-    }),
+    {
+      id: "clerk",
+      async getUserIdentity(ctx) {
+        // Clerk user info is automatically synced
+        return ctx.auth.getUserIdentity();
+      },
+    },
   ],
-};
+});
 ```
+
+**Cost:** Free up to 10,000 MAUs (more than enough for MVP)
 
 ### Payment Processing
 
@@ -679,6 +1007,7 @@ export default defineSchema({
 ```typescript
 // convex/lib/badge-types.ts
 export const BADGE_TYPES = {
+  // Milestone badges (core progression)
   FIRST_STEPS: {
     id: "first_steps",
     name: "First Steps",
@@ -693,9 +1022,9 @@ export const BADGE_TYPES = {
     icon: "🔥",
     criteria: { streak: 7 },
   },
-  COMMITTED: {
-    id: "committed",
-    name: "Committed",
+  MONTH_MASTER: {
+    id: "month_master",
+    name: "Month Master",
     description: "Maintain a 30-day streak",
     icon: "💪",
     criteria: { streak: 30 },
@@ -704,7 +1033,7 @@ export const BADGE_TYPES = {
     id: "century_club",
     name: "Century Club",
     description: "Complete 100 total repetitions",
-    icon: "🏆",
+    icon: "💯",
     criteria: { totalReps: 100 },
   },
   POWER_USER: {
@@ -721,9 +1050,9 @@ export const BADGE_TYPES = {
     icon: "🎯",
     criteria: { affirmations: 50 },
   },
-  MASTER: {
-    id: "master",
-    name: "Master",
+  GRAND_MASTER: {
+    id: "grand_master",
+    name: "Grand Master",
     description: "Complete 1,000 total repetitions",
     icon: "👑",
     criteria: { totalReps: 1000 },
@@ -742,6 +1071,66 @@ export const BADGE_TYPES = {
     icon: "💎",
     criteria: { totalReps: 5000 },
   },
+
+  // Tier progression badges (unlock at tier completion)
+  NOVICE_COMPLETE: {
+    id: "novice_complete",
+    name: "Novice Graduate",
+    description: "Reached Level 10",
+    icon: "🎓",
+    criteria: { level: 10 },
+  },
+  APPRENTICE_COMPLETE: {
+    id: "apprentice_complete",
+    name: "Apprentice Graduate",
+    description: "Reached Level 20",
+    icon: "📚",
+    criteria: { level: 20 },
+  },
+  PRACTITIONER_COMPLETE: {
+    id: "practitioner_complete",
+    name: "Practitioner Graduate",
+    description: "Reached Level 30",
+    icon: "🥋",
+    criteria: { level: 30 },
+  },
+  EXPERT_COMPLETE: {
+    id: "expert_complete",
+    name: "Expert Graduate",
+    description: "Reached Level 40",
+    icon: "🏅",
+    criteria: { level: 40 },
+  },
+  MASTER_COMPLETE: {
+    id: "master_complete",
+    name: "Master",
+    description: "Reached Level 50",
+    icon: "🏆",
+    criteria: { level: 50 },
+  },
+
+  // Special achievement badges
+  EARLY_BIRD: {
+    id: "early_bird",
+    name: "Early Bird",
+    description: "Practice before 7am 10 times",
+    icon: "🌅",
+    criteria: { earlyPractices: 10 },
+  },
+  NIGHT_OWL: {
+    id: "night_owl",
+    name: "Night Owl",
+    description: "Practice after 10pm 10 times",
+    icon: "🦉",
+    criteria: { latePractices: 10 },
+  },
+  VARIETY_SEEKER: {
+    id: "variety_seeker",
+    name: "Variety Seeker",
+    description: "Practice 20 different affirmations",
+    icon: "🎨",
+    criteria: { uniqueAffirmations: 20 },
+  },
 } as const;
 ```
 
@@ -749,24 +1138,169 @@ export const BADGE_TYPES = {
 
 ```typescript
 // convex/lib/xp-calculator.ts
-export const XP_PER_PRACTICE = 10;
-export const XP_STREAK_BONUS = 20;
-export const XP_7DAY_BONUS = 50;
-export const XP_30DAY_BONUS = 100;
 
+// Base XP values
+export const XP_COMPLETE_PRACTICE = 15;
+export const XP_FIRST_TODAY = 10;
+export const XP_FULL_SESSION_10 = 5;
+export const XP_FULL_SESSION_20 = 15;
+export const XP_NEW_AFFIRMATION = 25;
+export const XP_MORNING_PRACTICE = 10; // Before 10am
+export const XP_CONSISTENCY_BONUS = 20; // 5 days this week
+
+// Streak multipliers (smooth progression)
+export function getStreakMultiplier(streak: number): number {
+  if (streak >= 30) return 2.0; // 2x at 30+ days
+  if (streak >= 14) return 1.75; // 1.75x at 14+ days
+  if (streak >= 7) return 1.5; // 1.5x at 7+ days
+  if (streak >= 2) return 1.2; // 1.2x at 2+ days
+  return 1.0; // Base rate
+}
+
+// 50-Level thresholds (smooth exponential curve)
+// Formula: 20 × (1.11^N) for level N
+// Average ~42 XP/day with streak = ~343 days to level 50
 export const LEVEL_THRESHOLDS = [
-  { level: 1, xpRequired: 0 },
-  { level: 2, xpRequired: 100 },
-  { level: 3, xpRequired: 300 },
-  { level: 4, xpRequired: 600 },
-  { level: 5, xpRequired: 1000 },
-  { level: 6, xpRequired: 1500 },
-  { level: 7, xpRequired: 2500 },
-  { level: 8, xpRequired: 4000 },
-  { level: 9, xpRequired: 6000 },
-  { level: 10, xpRequired: 10000 },
+  // NOVICE (Levels 1-10) - First 2 weeks
+  { level: 1, xpRequired: 0 }, // Start
+  { level: 2, xpRequired: 25 }, // ~1 day
+  { level: 3, xpRequired: 55 }, // ~1.5 days
+  { level: 4, xpRequired: 90 }, // ~2 days
+  { level: 5, xpRequired: 130 }, // ~3 days
+  { level: 6, xpRequired: 175 }, // ~4 days
+  { level: 7, xpRequired: 225 }, // ~5 days
+  { level: 8, xpRequired: 280 }, // ~7 days
+  { level: 9, xpRequired: 340 }, // ~8 days
+  { level: 10, xpRequired: 405 }, // ~10 days 🎉
+
+  // APPRENTICE (Levels 11-20) - Weeks 2-4
+  { level: 11, xpRequired: 475 }, // ~11 days
+  { level: 12, xpRequired: 550 }, // ~13 days
+  { level: 13, xpRequired: 630 }, // ~15 days
+  { level: 14, xpRequired: 715 }, // ~17 days
+  { level: 15, xpRequired: 805 }, // ~19 days
+  { level: 16, xpRequired: 900 }, // ~21 days
+  { level: 17, xpRequired: 1000 }, // ~24 days
+  { level: 18, xpRequired: 1105 }, // ~26 days
+  { level: 19, xpRequired: 1215 }, // ~29 days
+  { level: 20, xpRequired: 1330 }, // ~32 days 🎉
+
+  // PRACTITIONER (Levels 21-30) - Months 2-3
+  { level: 21, xpRequired: 1460 }, // ~35 days
+  { level: 22, xpRequired: 1605 }, // ~38 days
+  { level: 23, xpRequired: 1765 }, // ~42 days
+  { level: 24, xpRequired: 1940 }, // ~46 days
+  { level: 25, xpRequired: 2130 }, // ~51 days
+  { level: 26, xpRequired: 2335 }, // ~56 days
+  { level: 27, xpRequired: 2555 }, // ~61 days
+  { level: 28, xpRequired: 2790 }, // ~66 days
+  { level: 29, xpRequired: 3040 }, // ~72 days
+  { level: 30, xpRequired: 3305 }, // ~79 days 🎉
+
+  // EXPERT (Levels 31-40) - Months 3-6
+  { level: 31, xpRequired: 3595 }, // ~86 days
+  { level: 32, xpRequired: 3910 }, // ~93 days
+  { level: 33, xpRequired: 4250 }, // ~101 days
+  { level: 34, xpRequired: 4615 }, // ~110 days
+  { level: 35, xpRequired: 5005 }, // ~119 days
+  { level: 36, xpRequired: 5420 }, // ~129 days
+  { level: 37, xpRequired: 5860 }, // ~139 days
+  { level: 38, xpRequired: 6325 }, // ~151 days
+  { level: 39, xpRequired: 6815 }, // ~162 days
+  { level: 40, xpRequired: 7330 }, // ~175 days 🎉
+
+  // MASTER (Levels 41-50) - Months 6-12
+  { level: 41, xpRequired: 7880 }, // ~188 days
+  { level: 42, xpRequired: 8465 }, // ~202 days
+  { level: 43, xpRequired: 9085 }, // ~216 days
+  { level: 44, xpRequired: 9740 }, // ~232 days
+  { level: 45, xpRequired: 10430 }, // ~248 days
+  { level: 46, xpRequired: 11155 }, // ~266 days
+  { level: 47, xpRequired: 11915 }, // ~284 days
+  { level: 48, xpRequired: 12710 }, // ~303 days
+  { level: 49, xpRequired: 13540 }, // ~323 days
+  { level: 50, xpRequired: 14405 }, // ~343 days (~1 year) 🏆
 ];
 
+// Tier system (visual identity and progression)
+export const LEVEL_TIERS = {
+  NOVICE: {
+    levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    name: "Novice",
+    color: "#94a3b8", // Gray
+    icon: "🌱",
+    description: "Beginning your journey",
+  },
+  APPRENTICE: {
+    levels: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    name: "Apprentice",
+    color: "#3b82f6", // Blue
+    icon: "💫",
+    description: "Learning the practice",
+  },
+  PRACTITIONER: {
+    levels: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    name: "Practitioner",
+    color: "#8b5cf6", // Purple
+    icon: "💪",
+    description: "Building mastery",
+  },
+  EXPERT: {
+    levels: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+    name: "Expert",
+    color: "#f59e0b", // Gold
+    icon: "⚡",
+    description: "Advanced transformation",
+  },
+  MASTER: {
+    levels: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    name: "Master",
+    color: "#ef4444", // Red (prestige)
+    icon: "🏆",
+    description: "Elite mindshift master",
+  },
+};
+
+// Get tier for a given level
+export function getLevelTier(level: number) {
+  for (const tier of Object.values(LEVEL_TIERS)) {
+    if (tier.levels.includes(level)) {
+      return tier;
+    }
+  }
+  return LEVEL_TIERS.NOVICE;
+}
+
+// Milestone celebrations (every 10 levels)
+export const MILESTONE_LEVELS = {
+  10: {
+    title: "First Milestone!",
+    reward: "🎁 Unlocked: Dark mode theme",
+    xpBonus: 50,
+  },
+  20: {
+    title: "Apprentice Complete!",
+    reward: "🎁 Unlocked: Custom affirmation categories",
+    xpBonus: 100,
+  },
+  30: {
+    title: "Halfway to Master!",
+    reward: "🎁 Unlocked: Export affirmations (CSV)",
+    xpBonus: 150,
+  },
+  40: {
+    title: "Expert Achieved!",
+    reward: "🎁 Unlocked: Advanced analytics dashboard",
+    xpBonus: 200,
+  },
+  50: {
+    title: "MASTER ACHIEVED!",
+    reward: "🏆 Lifetime Pro membership + Master badge",
+    xpBonus: 500,
+  },
+};
+
+// Calculate level from total XP
 export function calculateLevel(totalXP: number): number {
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
@@ -776,13 +1310,149 @@ export function calculateLevel(totalXP: number): number {
   return 1;
 }
 
+// Calculate progress to next level
 export function calculateXPForNextLevel(
   currentXP: number,
   currentLevel: number
-): number {
-  const nextLevel = LEVEL_THRESHOLDS.find((l) => l.level === currentLevel + 1);
-  if (!nextLevel) return 0;
-  return nextLevel.xpRequired - currentXP;
+): {
+  xpNeeded: number;
+  xpProgress: number;
+  percentProgress: number;
+  tierProgress: string; // "3/10 to Apprentice"
+} {
+  const currentThreshold = LEVEL_THRESHOLDS.find(
+    (l) => l.level === currentLevel
+  );
+  const nextThreshold = LEVEL_THRESHOLDS.find(
+    (l) => l.level === currentLevel + 1
+  );
+
+  if (!currentThreshold || !nextThreshold) {
+    return {
+      xpNeeded: 0,
+      xpProgress: 0,
+      percentProgress: 100,
+      tierProgress: "Max Level",
+    };
+  }
+
+  const xpForThisLevel = nextThreshold.xpRequired - currentThreshold.xpRequired;
+  const xpProgress = currentXP - currentThreshold.xpRequired;
+  const percentProgress = Math.min((xpProgress / xpForThisLevel) * 100, 100);
+
+  // Calculate tier progress
+  const currentTier = getLevelTier(currentLevel);
+  const nextTier = getLevelTier(currentLevel + 1);
+  const levelsInCurrentTier = currentTier.levels.length;
+  const currentLevelInTier = currentTier.levels.indexOf(currentLevel) + 1;
+
+  let tierProgress = "";
+  if (currentTier.name === nextTier.name) {
+    // Still in same tier
+    const levelsToNextTier = levelsInCurrentTier - currentLevelInTier;
+    tierProgress = `${levelsToNextTier}/10 to ${nextTier.name}`;
+  } else {
+    // About to change tiers!
+    tierProgress = `Next: ${nextTier.name} ${nextTier.icon}`;
+  }
+
+  return {
+    xpNeeded: nextThreshold.xpRequired - currentXP,
+    xpProgress,
+    percentProgress,
+    tierProgress,
+  };
+}
+
+// Calculate XP for a practice session
+export function calculatePracticeXP({
+  repetitions,
+  streak,
+  isFirstToday,
+  isNewAffirmation,
+  isMorningPractice,
+}: {
+  repetitions: number;
+  streak: number;
+  isFirstToday: boolean;
+  isNewAffirmation: boolean;
+  isMorningPractice: boolean;
+}): number {
+  let baseXP = XP_COMPLETE_PRACTICE;
+
+  // First practice today bonus
+  if (isFirstToday) {
+    baseXP += XP_FIRST_TODAY;
+  }
+
+  // Full session bonuses
+  if (repetitions >= 20) {
+    baseXP += XP_FULL_SESSION_20;
+  } else if (repetitions >= 10) {
+    baseXP += XP_FULL_SESSION_10;
+  }
+
+  // Apply streak multiplier
+  const multiplier = getStreakMultiplier(streak);
+  let totalXP = Math.floor(baseXP * multiplier);
+
+  // Additional bonuses (not multiplied by streak)
+  if (isNewAffirmation) {
+    totalXP += XP_NEW_AFFIRMATION;
+  }
+
+  if (isMorningPractice) {
+    totalXP += XP_MORNING_PRACTICE;
+  }
+
+  return totalXP;
+}
+
+// Check if level is a milestone
+export function checkMilestone(level: number): {
+  isMilestone: boolean;
+  title?: string;
+  reward?: string;
+  xpBonus?: number;
+} {
+  const milestone = MILESTONE_LEVELS[level as keyof typeof MILESTONE_LEVELS];
+
+  return {
+    isMilestone: !!milestone,
+    ...milestone,
+  };
+}
+
+// Get celebration type for level (determines UI treatment)
+export function getCelebrationType(
+  level: number,
+  previousLevel: number
+): "major" | "standard" | "silent" | "tier-change" {
+  const currentTier = getLevelTier(level);
+  const previousTier = getLevelTier(previousLevel);
+
+  // Tier change = major celebration
+  if (currentTier.name !== previousTier.name) {
+    return "tier-change";
+  }
+
+  // Milestone (every 10) = major celebration
+  if (level % 10 === 0) {
+    return "major";
+  }
+
+  // Levels 1-20: standard toast notification
+  if (level <= 20) {
+    return "standard";
+  }
+
+  // Levels 21-40: silent (just update badge)
+  if (level <= 40) {
+    return "silent";
+  }
+
+  // Levels 41-50: standard toast (renewed excitement for endgame)
+  return "standard";
 }
 ```
 
@@ -1431,14 +2101,19 @@ space-12: 3rem    /* 48px */
 
 #### 1. Dashboard (Home Screen)
 
-**Layout:**
+**Layout (Tier-First Display):**
 
 ```
 ┌─────────────────────────────────┐
 │ Welcome back, Justin! 👋        │ Header
 ├─────────────────────────────────┤
-│ 🔥 7    ⚡1,247   🎯 23         │ Stats Row
-│ Streak  XP (Lvl 4) Practices    │
+│ ┌─────────────────────────────┐ │
+│ │ EXPERT ⚡                    │ │ (Gold background)
+│ │ Level 32                     │ │
+│ │ ▓▓▓▓▓▓▓░░░ 2/10 to Master   │ │ (Tier progress)
+│ │                              │ │
+│ │ 🔥 45 days    8,465 XP       │ │
+│ └─────────────────────────────┘ │
 ├─────────────────────────────────┤
 │ [+ Create New Affirmation]      │ Primary CTA
 ├─────────────────────────────────┤
@@ -1461,10 +2136,18 @@ space-12: 3rem    /* 48px */
 [🏠] [➕] [📚] [🏆] [👤]           Bottom Nav
 ```
 
+**Key Changes for 50-Level System:**
+
+- **Tier name most prominent** (EXPERT ⚡)
+- **Level number secondary** (Level 32)
+- **Tier progress bar** (2/10 to Master) - shows big-picture goal
+- **Streak and total XP** in same card
+- Background color changes per tier
+
 **Components:**
 
-- Header with personalized greeting
-- Stat cards (Streak, XP/Level, Total Practices)
+- TierCard (shows tier, level, progress)
+- Stat row (streak, XP)
 - Large CTA button (primary action)
 - Affirmation cards (quick access to 3 most recent)
 - Progress checklist
@@ -1472,10 +2155,10 @@ space-12: 3rem    /* 48px */
 
 **Interactions:**
 
+- Tap TierCard → Navigate to Profile with level details
 - Tap CTA → Navigate to Transform screen
 - Tap "Practice →" → Navigate to Practice screen for that affirmation
 - Tap affirmation card → View details/edit
-- Tap stat card → Navigate to Profile with that stat highlighted
 
 ---
 
@@ -1796,37 +2479,273 @@ export function PracticeInput({
 }
 ```
 
+#### TierCard Component
+
+```typescript
+// components/profile/tier-card.tsx
+interface TierCardProps {
+  level: number;
+  totalXP: number;
+  currentStreak: number;
+}
+
+export function TierCard({ level, totalXP, currentStreak }: TierCardProps) {
+  const tier = getLevelTier(level);
+  const { tierProgress, percentProgress } = calculateXPForNextLevel(totalXP, level);
+
+  return (
+    <Card
+      className="p-6"
+      style={{ backgroundColor: tier.color + '20' }} // Light tint
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-sm text-gray-600 uppercase tracking-wide">
+            Your Tier
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-3xl">{tier.icon}</span>
+            <span
+              className="text-2xl font-bold"
+              style={{ color: tier.color }}
+            >
+              {tier.name.toUpperCase()}
+            </span>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-sm text-gray-600">Level</div>
+          <div className="text-3xl font-bold">{level}</div>
+        </div>
+      </div>
+
+      {/* Tier progress bar */}
+      <div className="space-y-2">
+        <Progress value={percentProgress} className="h-3" />
+        <p className="text-sm text-gray-600 text-center">
+          {tierProgress}
+        </p>
+      </div>
+
+      {/* Stats row */}
+      <div className="flex gap-4 mt-4 pt-4 border-t">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🔥</span>
+          <div>
+            <div className="text-sm text-gray-600">Streak</div>
+            <div className="font-semibold">{currentStreak} days</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xl">⚡</span>
+          <div>
+            <div className="text-sm text-gray-600">Total XP</div>
+            <div className="font-semibold">{totalXP.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+```
+
+---
+
 #### CelebrationModal Component
 
 ```typescript
 // components/practice/celebration-modal.tsx
 interface CelebrationModalProps {
   open: boolean;
+  celebrationType: 'major' | 'standard' | 'silent' | 'tier-change';
   xpEarned: number;
   leveledUp: boolean;
   newLevel?: number;
+  oldLevel?: number;
   streakMaintained: boolean;
   currentStreak: number;
   newBadges?: string[];
+  milestone?: {
+    title: string;
+    reward: string;
+    xpBonus: number;
+  };
   onClose: () => void;
 }
 
 export function CelebrationModal({
   open,
+  celebrationType,
   xpEarned,
   leveledUp,
   newLevel,
+  oldLevel,
   streakMaintained,
   currentStreak,
   newBadges,
+  milestone,
   onClose
 }: CelebrationModalProps) {
+  // Don't show modal for silent celebrations
+  if (celebrationType === 'silent') {
+    return null;
+  }
+
+  // Standard toast for levels 1-20 and 41-50
+  if (celebrationType === 'standard' && leveledUp) {
+    return (
+      <Toast open={open} onOpenChange={onClose}>
+        <ToastTitle className="flex items-center gap-2">
+          🎉 Level {newLevel}!
+        </ToastTitle>
+        <ToastDescription>
+          +{xpEarned} XP earned
+        </ToastDescription>
+      </Toast>
+    );
+  }
+
+  // Tier change = HUGE celebration
+  if (celebrationType === 'tier-change' && newLevel) {
+    const newTier = getLevelTier(newLevel);
+
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="text-center"
+          >
+            <div className="text-8xl mb-4">{newTier.icon}</div>
+
+            <DialogTitle className="text-3xl mb-2">
+              TIER UP!
+            </DialogTitle>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="p-6 rounded-lg mb-4"
+              style={{ backgroundColor: newTier.color + '20' }}
+            >
+              <p className="text-sm text-gray-600 uppercase mb-2">
+                You are now a
+              </p>
+              <p
+                className="text-4xl font-bold mb-2"
+                style={{ color: newTier.color }}
+              >
+                {newTier.name.toUpperCase()}
+              </p>
+              <p className="text-sm text-gray-600">
+                {newTier.description}
+              </p>
+            </motion.div>
+
+            {milestone && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                className="p-4 bg-success-50 rounded-lg mb-4"
+              >
+                <p className="font-semibold mb-1">{milestone.title}</p>
+                <p className="text-sm">{milestone.reward}</p>
+                <p className="text-xs text-gray-600 mt-2">
+                  +{milestone.xpBonus} Bonus XP
+                </p>
+              </motion.div>
+            )}
+
+            <Button onClick={onClose} className="w-full mt-4" size="lg">
+              Continue Your Journey
+            </Button>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Major celebration (milestones - every 10 levels)
+  if (celebrationType === 'major' && milestone) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent>
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="text-center"
+          >
+            <div className="text-6xl mb-4">🎊</div>
+            <DialogTitle className="text-3xl mb-4">
+              {milestone.title}
+            </DialogTitle>
+
+            <div className="space-y-4">
+              <div className="text-2xl font-bold text-primary-600">
+                +{xpEarned} XP
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-primary-50 rounded-lg"
+              >
+                <p className="text-lg font-semibold mb-2">
+                  Level {newLevel} Reached!
+                </p>
+                <p className="text-sm">{milestone.reward}</p>
+              </motion.div>
+
+              {streakMaintained && (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-2xl">🔥</span>
+                  <span className="text-lg">{currentStreak}-day streak!</span>
+                </div>
+              )}
+
+              {newBadges && newBadges.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="p-4 bg-success-50 rounded-lg"
+                >
+                  <p className="font-semibold mb-2">New Badge Earned!</p>
+                  {newBadges.map(badge => (
+                    <div key={badge} className="text-4xl">{badge}</div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <Button onClick={onClose} className="w-full">
+                Practice Another
+              </Button>
+              <Button onClick={onClose} variant="outline" className="w-full">
+                Back to Home
+              </Button>
+            </div>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Default practice complete celebration (no level up)
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 200 }}
           className="text-center"
         >
@@ -1840,36 +2759,11 @@ export function CelebrationModal({
               +{xpEarned} XP
             </div>
 
-            {leveledUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-primary-50 rounded-lg"
-              >
-                <p className="text-lg font-semibold">Level Up!</p>
-                <p className="text-3xl">🎯 Level {newLevel}</p>
-              </motion.div>
-            )}
-
             {streakMaintained && (
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl">🔥</span>
                 <span className="text-lg">{currentStreak}-day streak!</span>
               </div>
-            )}
-
-            {newBadges && newBadges.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5 }}
-                className="p-4 bg-success-50 rounded-lg"
-              >
-                <p className="font-semibold mb-2">New Badge Earned!</p>
-                {newBadges.map(badge => (
-                  <div key={badge} className="text-4xl">{badge}</div>
-                ))}
-              </motion.div>
             )}
           </div>
 
@@ -2674,6 +3568,10 @@ describe("XP Calculator", () => {
 NEXT_PUBLIC_CONVEX_URL=https://xxx.convex.cloud
 CONVEX_DEPLOYMENT=dev:xxx
 
+# Clerk (Authentication)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
+
 # Anthropic
 ANTHROPIC_API_KEY=sk-ant-xxx
 
@@ -2691,10 +3589,6 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 # Sentry
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
-
-# Google OAuth (Convex Auth)
-GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=xxx
 ```
 
 ### Dependencies
@@ -2706,7 +3600,10 @@ GOOGLE_CLIENT_SECRET=xxx
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "convex": "^1.16.0",
-    "@anthropic-ai/sdk": "^0.27.0",
+    "@clerk/nextjs": "^5.0.0",
+    "@clerk/clerk-sdk-node": "^5.0.0",
+    "ai": "^3.4.0",
+    "@ai-sdk/anthropic": "^1.0.0",
     "stripe": "^14.0.0",
     "@stripe/stripe-js": "^2.4.0",
     "framer-motion": "^11.0.0",

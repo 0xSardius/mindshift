@@ -1499,20 +1499,162 @@ Match actual component dimensions.
 
 ---
 
-### Day 3-4: Mobile Optimization (6 hours)
+### Day 3-4: Practice Heatmap & Mobile Optimization (8 hours)
 
 **Tasks:**
 
-1. ✅ Test on real devices
-2. ✅ Fix safe area issues
-3. ✅ Optimize tap targets
-4. ✅ Test keyboard behavior
-5. ✅ Performance optimization
+1. ✅ Build GitHub-style practice heatmap
+2. ✅ Integrate heatmap into Profile screen
+3. ✅ Test on real mobile devices
+4. ✅ Fix safe area issues
+5. ✅ Optimize tap targets
 
-**Cursor Prompt for Mobile Testing Checklist:**
+**v0 Prompt for Practice Heatmap:**
 
 ```
-Create a mobile optimization checklist and fix all issues:
+Build a GitHub-style contribution activity heatmap component.
+
+Used by users viewing their profile,
+in the moment they want to see their practice consistency over time,
+to visualize daily practice patterns and stay motivated.
+
+Components:
+- Title: "Activity This Year"
+- Heatmap grid:
+  - 52 columns (weeks)
+  - 7 rows (days, Mon-Sun)
+  - Each cell is a small square (12x12px)
+  - Cells colored by practice count:
+    - 0 practices: light gray (#ebedf0)
+    - 1-2 practices: light blue (#9be9a8)
+    - 3-4 practices: medium blue (#40c463)
+    - 5+ practices: dark blue (#30a14e)
+  - Hover tooltip: "3 practices on Nov 22, 2024"
+  - Current date highlighted with border
+- Month labels: Jan, Feb, Mar... (at top)
+- Legend at bottom:
+  - "Less" ⬜ 🟩 🟩 🟩 🟩 "More"
+  - Shows color scale
+
+Interactions:
+- Hover over cell: tooltip with date and count
+- Click cell: optional filter by date
+- Responsive: smaller cells on mobile (10x10px)
+
+Data props:
+- practiceData: Array<{ date: string, count: number }>
+  - Example: [{ date: '2024-11-22', count: 3 }, ...]
+  - Covers last 365 days
+
+Logic:
+- Fill in missing dates with count: 0
+- Sort chronologically
+- Group by week (Sunday start)
+- Determine color based on count thresholds
+
+Constraints:
+- Platform: Desktop and mobile responsive
+- Visual tone: Clean, GitHub-inspired. Blue gradient matches Mindshift brand.
+- Layout: Horizontal scroll on mobile if needed
+- Accessibility: Tooltip text for screen readers
+- Performance: Render 365 cells efficiently (React.memo)
+- Use Shadcn: Tooltip, Card
+```
+
+**Cursor Prompt for Heatmap Data Query:**
+
+```
+Create Convex query for practice heatmap data.
+
+File: convex/queries.ts
+Function: getPracticeHeatmap
+
+Implementation:
+1. Get current authenticated user
+2. Query all practices from last 365 days
+3. Group practices by date (YYYY-MM-DD format)
+4. Count practices per day
+5. Return array of { date: string, count: number }
+
+Example return:
+[
+  { date: '2024-11-22', count: 3 },
+  { date: '2024-11-21', count: 1 },
+  { date: '2024-11-20', count: 0 },
+  // ... last 365 days
+]
+
+Use:
+- practices table with by_user index
+- Filter by practicedAt >= oneYearAgo
+- Group by date string
+- Handle missing dates (fill with 0)
+
+Include TypeScript types.
+Optimize for performance (use index properly).
+```
+
+**Cursor Prompt for Heatmap Component:**
+
+```
+Create PracticeHeatmap React component.
+
+File: components/profile/practice-heatmap.tsx
+
+Features:
+1. Load data from getPracticeHeatmap query
+2. Generate full 365-day calendar (fill missing dates with count: 0)
+3. Group days into weeks (7 days per week, Sunday start)
+4. Render grid of squares:
+   - 52 columns (weeks)
+   - 7 rows (days)
+   - Color based on count (0=gray, 1-2=light blue, 3-4=medium blue, 5+=dark blue)
+5. Tooltip on hover showing date and count
+6. Legend at bottom showing color scale
+7. Responsive: smaller squares on mobile
+
+Use:
+- Convex useQuery hook
+- Shadcn Tooltip component
+- Framer Motion for subtle animations
+- Color functions for threshold mapping
+
+Helper functions:
+- generateLast365Days(): string[]
+- groupIntoWeeks(cells): HeatmapCell[][]
+- getColor(count): string
+- formatDate(dateString): string
+
+Performance:
+- React.memo for cells
+- useMemo for data processing
+- Efficient rendering of 365 elements
+```
+
+**Integration Steps:**
+
+1. Generate heatmap component in v0 or build manually
+2. Create getPracticeHeatmap query in Convex
+3. Add PracticeHeatmap to Profile screen (after TierCard, before Badges section)
+4. Test with various practice patterns:
+   - No data (all gray)
+   - Sparse data (few blue squares)
+   - Consistent data (many blue squares)
+   - Current streak visible
+5. Polish colors to match Mindshift brand
+6. Test mobile responsiveness (horizontal scroll if needed)
+
+**Optional Enhancements (if time permits):**
+
+- Show longest streak stat below heatmap: "🔥 Longest streak: 45 days"
+- "Perfect Week" badge if 7 consecutive days filled
+- Share button to generate screenshot of heatmap
+- Click cell to view practices from that date
+
+**Cursor Prompt for Mobile Testing:**
+
+```
+Mobile optimization checklist:
 
 1. Safe area handling:
    - Top: account for notch/camera cutout
@@ -1522,45 +1664,43 @@ Create a mobile optimization checklist and fix all issues:
 2. Tap targets:
    - All buttons minimum 44x44px
    - Adequate spacing between tappable elements
-   - No accidental taps on closely spaced items
+   - No accidental taps on heatmap cells (they're small)
 
 3. Keyboard behavior:
    - Inputs don't hide behind keyboard
    - Smooth scroll when keyboard opens
-   - "Done" button on keyboard works correctly
 
 4. Performance:
    - Images optimized (next/image)
    - No janky scrolling
-   - Animations use transform/opacity only (GPU accelerated)
-   - Debounce search input
+   - Heatmap renders smoothly (365 cells)
+   - Animations use transform/opacity only
 
-5. Text sizing:
-   - Readable without zooming (16px minimum)
-   - Line height appropriate (1.5-1.6)
-   - Sufficient contrast (WCAG AA)
-
-6. Gestures:
-   - Swipe back works (default browser behavior)
-   - Pull to refresh disabled (conflicts with app scroll)
-   - Long press doesn't trigger unwanted context menu
+5. Heatmap on mobile:
+   - Horizontal scroll works smoothly
+   - Cells still tappable at 10x10px
+   - Tooltip positions correctly
+   - Legend visible
 
 Test on:
 - iPhone (Safari)
 - Android (Chrome)
-- Various screen sizes (small phones to tablets)
-
-Document any platform-specific issues.
+- Small phones (SE) to tablets
 ```
 
 **Verification:**
 
+- [ ] Heatmap loads with real practice data
+- [ ] Shows last 365 days correctly
+- [ ] Colors map to practice counts correctly
+- [ ] Tooltips show date and count
+- [ ] Responsive on mobile (horizontal scroll)
+- [ ] Performance good (no lag with 365 cells)
+- [ ] Looks great on Profile screen
 - [ ] Works on iPhone Safari
 - [ ] Works on Android Chrome
 - [ ] No safe area issues
 - [ ] All tap targets accessible
-- [ ] Keyboard doesn't break UI
-- [ ] Smooth performance
 
 ---
 
@@ -1657,6 +1797,7 @@ Background: white or gradient (blue to purple)
 
 - ✅ App feels polished and professional
 - ✅ Animations smooth and delightful
+- ✅ Practice heatmap (GitHub-style contribution squares)
 - ✅ Mobile-optimized
 - ✅ PWA installable
 
@@ -2697,6 +2838,7 @@ Use this checklist to track your build progress:
 **Week 5: Polish**
 
 - [ ] Animations smooth
+- [ ] Practice heatmap built
 - [ ] Mobile optimized
 - [ ] PWA configured
 - [ ] Professional feel
