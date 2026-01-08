@@ -136,3 +136,35 @@ app/
 | Date | Work Done | Commit |
 |------|-----------|--------|
 | Jan 7, 2025 | Created Convex schema, XP calculator, badge types | `ed1e4a9` |
+
+---
+
+## Revenue Model Decision (January 7, 2025)
+
+### Problem with Original Model
+- 5 transforms/month gated the wrong action
+- Users have ~5-7 core negative thoughts - could use free tier forever
+- Practice (the habit) is infinite, creation is finite
+
+### New Model
+
+| | Free | Pro |
+|---|---|---|
+| **Price** | $0 | $9.99/mo or $79/year |
+| **AI Transforms** | 10 lifetime | Unlimited |
+| **Practice** | Unlimited | Unlimited |
+| **Gamification** | Full | Full + Pro badges |
+| **Leaderboard** | View only | Custom username |
+| **Extras** | - | Streak Shield, analytics, export, dark mode |
+
+### Key Changes
+1. **10 lifetime** (not monthly) - real scarcity, not artificial reset
+2. **$9.99** (not $4.99) - mental wellness commands premium pricing
+3. **$79/year** - 34% discount, "4 months free" positioning
+4. **Streak Shield** - key Pro differentiator (miss 1 day/week)
+5. **No Elite tier** - focus on Free→Pro conversion first
+
+### Revenue Projections
+- Year 1 @ 10K MAU, 5% conversion: ~$60K ARR
+- Year 2 @ 40K MAU, 6% conversion: ~$290K ARR
+- 96%+ gross margin after infrastructure costs

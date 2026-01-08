@@ -20,7 +20,7 @@ const plans = [
     annualPrice: 0,
     description: "Perfect for getting started",
     features: [
-      { name: "5 transformations per month", included: true },
+      { name: "10 AI transformations (lifetime)", included: true },
       { name: "Unlimited practice sessions", included: true },
       { name: "Full gamification", included: true },
       { name: "Leaderboard access", included: true },
@@ -37,8 +37,8 @@ const plans = [
     name: "Pro",
     badge: "Most Popular",
     badgeVariant: "default" as const,
-    monthlyPrice: 4.99,
-    annualPrice: 49,
+    monthlyPrice: 9.99,
+    annualPrice: 79,
     description: "For serious practitioners",
     features: [
       { name: "Everything in Free", included: true },
@@ -79,7 +79,7 @@ const plans = [
 ]
 
 const allFeatures = [
-  { name: "Transformations", free: "5/month", pro: "Unlimited", elite: "Unlimited" },
+  { name: "Transformations", free: "10 lifetime", pro: "Unlimited", elite: "Unlimited" },
   { name: "Practice sessions", free: true, pro: true, elite: true },
   { name: "Gamification & XP", free: true, pro: true, elite: true },
   { name: "Leaderboard", free: true, pro: true, elite: true },
@@ -111,7 +111,7 @@ const faqs = [
   {
     question: "Do you offer refunds?",
     answer:
-      "Yes, we offer a 7-day money-back guarantee. If you're not satisfied for any reason, contact us within 7 days of purchase for a full refund.",
+      "Yes, we offer a 30-day money-back guarantee. If you're not satisfied for any reason, contact us within 30 days of purchase for a full refund.",
   },
   {
     question: "Is my payment secure?",
@@ -128,7 +128,7 @@ const faqs = [
 const trustSignals = [
   { icon: CreditCard, text: "Secure payment via Stripe" },
   { icon: Lock, text: "Cancel anytime" },
-  { icon: Shield, text: "7-day money-back guarantee" },
+  { icon: Shield, text: "30-day money-back guarantee" },
   { icon: Target, text: "No hidden fees" },
 ]
 
@@ -157,7 +157,7 @@ export function Pricing() {
             </span>
             {isAnnual && (
               <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                Save 17%
+                Save 34% — 4 months free
               </Badge>
             )}
           </div>

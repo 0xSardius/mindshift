@@ -110,7 +110,30 @@ Detailed specs are in `app/documentation/`:
 7. **Analytics:** PostHog, email (Resend), Sentry
 8. **Launch:** Landing page, Product Hunt
 
-## Free vs Pro Tiers
+## Revenue Model
 
-- **Free:** 5 transformations/month, 3 AI suggestions, basic badges
-- **Pro ($4.99/mo):** Unlimited, 5 suggestions, all badges, custom username, analytics
+### Pricing Tiers
+
+| | Free | Pro |
+|---|---|---|
+| **Price** | $0 | $9.99/mo or $79/year |
+| **AI Transforms** | 10 lifetime | Unlimited |
+| **Practice Sessions** | Unlimited | Unlimited |
+| **Gamification** | Full (50 levels, basic badges) | Full + exclusive Pro badges |
+| **Leaderboard** | View only | Custom username, compete |
+| **Insights** | Basic stats | Weekly AI insight email |
+| **Extras** | - | Streak Shield (1 miss/week), export, dark mode |
+
+### Why This Model
+
+1. **10 lifetime transforms** (not monthly) - Users experience full value with core negative thoughts, upgrade when they want more
+2. **$9.99 price point** - Mental wellness commands premium pricing; $4.99 signals "cheap app"
+3. **Annual push at $79/year** - 34% discount, better LTV, "2 months free" positioning
+4. **No Elite tier** - Focus on Free→Pro conversion first, add tiers later
+
+### Conversion Strategy
+
+- 7-day Pro trial (no credit card required)
+- Contextual upgrade prompts ("8 of 10 transforms used")
+- Streak Shield as key Pro differentiator
+- Push annual plans for better retention
