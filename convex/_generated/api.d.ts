@@ -10,6 +10,8 @@
 
 import type * as lib_badgeTypes from "../lib/badgeTypes.js";
 import type * as lib_xpCalculator from "../lib/xpCalculator.js";
+import type * as mutations from "../mutations.js";
+import type * as queries from "../queries.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +22,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   "lib/badgeTypes": typeof lib_badgeTypes;
   "lib/xpCalculator": typeof lib_xpCalculator;
+  mutations: typeof mutations;
+  queries: typeof queries;
 }>;
 
 /**
