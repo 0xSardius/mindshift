@@ -8,13 +8,19 @@
  * @module
  */
 
+import type * as lib_badgeTypes from "../lib/badgeTypes.js";
+import type * as lib_xpCalculator from "../lib/xpCalculator.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  "lib/badgeTypes": typeof lib_badgeTypes;
+  "lib/xpCalculator": typeof lib_xpCalculator;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
