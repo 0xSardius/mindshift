@@ -1,18 +1,25 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useMutation, useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Loader2, ArrowRight, Sparkles, AlertCircle, RefreshCw } from "lucide-react"
+import { Loader2, ArrowRight, Sparkles, AlertCircle, RefreshCw, Lock } from "lucide-react"
 import type { GeneratedAffirmation, AffirmationAnalysis } from "@/lib/types"
 
 type Phase = "input" | "loading" | "selection" | "error"
 
 export function AffirmationCreator() {
+  const router = useRouter()
+  const createAffirmation = useMutation(api.mutations.createAffirmation)
+  const transformCount = useQuery(api.queries.getTransformationCount)
+
   const [phase, setPhase] = useState<Phase>("input")
   const [negativeThought, setNegativeThought] = useState("")
   const [affirmations, setAffirmations] = useState<GeneratedAffirmation[]>([])
@@ -20,9 +27,11 @@ export function AffirmationCreator() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [customAffirmation, setCustomAffirmation] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   const characterCount = negativeThought.length
   const isInputValid = characterCount >= 10
+  const hasReachedLimit = transformCount && !transformCount.unlimited && transformCount.remaining <= 0
 
   async function handleGenerate() {
     setPhase("loading")
@@ -50,22 +59,53 @@ export function AffirmationCreator() {
     }
   }
 
-  function handleSaveAndPractice() {
+  async function handleSaveAndPractice() {
     const selectedText = customAffirmation || affirmations.find((a) => a.id === selectedId)?.text
-    if (selectedText) {
-      // TODO: Save to database and navigate to practice
-      console.log("Saving affirmation:", selectedText, analysis)
-      // For now, navigate to dashboard
-      window.location.href = "/dashboard"
+    if (!selectedText) return
+
+    setIsSaving(true)
+    try {
+      const affirmationId = await createAffirmation({
+        originalThought: negativeThought,
+        affirmationText: selectedText,
+        detectedLevel: analysis?.detectedLevel,
+        cognitiveDistortions: analysis?.cognitiveDistortion ? [analysis.cognitiveDistortion] : undefined,
+        themeCategory: analysis?.theme,
+        chosenLevel: analysis?.targetLevel,
+        userEdited: !!customAffirmation,
+      })
+      router.push(`/practice/${affirmationId}`)
+    } catch (error) {
+      console.error("Failed to save affirmation:", error)
+      setErrorMessage(error instanceof Error ? error.message : "Failed to save affirmation")
+      setPhase("error")
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  function handleSaveToLibrary() {
+  async function handleSaveToLibrary() {
     const selectedText = customAffirmation || affirmations.find((a) => a.id === selectedId)?.text
-    if (selectedText) {
-      // TODO: Save to library without starting practice
-      console.log("Saving to library:", selectedText, analysis)
-      window.location.href = "/dashboard"
+    if (!selectedText) return
+
+    setIsSaving(true)
+    try {
+      await createAffirmation({
+        originalThought: negativeThought,
+        affirmationText: selectedText,
+        detectedLevel: analysis?.detectedLevel,
+        cognitiveDistortions: analysis?.cognitiveDistortion ? [analysis.cognitiveDistortion] : undefined,
+        themeCategory: analysis?.theme,
+        chosenLevel: analysis?.targetLevel,
+        userEdited: !!customAffirmation,
+      })
+      router.push("/library")
+    } catch (error) {
+      console.error("Failed to save affirmation:", error)
+      setErrorMessage(error instanceof Error ? error.message : "Failed to save affirmation")
+      setPhase("error")
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -81,12 +121,43 @@ export function AffirmationCreator() {
 
   // Phase 1: Input
   if (phase === "input") {
+    // Show limit reached state
+    if (hasReachedLimit) {
+      return (
+        <div className="flex flex-col gap-6 px-4 py-8 mx-auto max-w-[600px]">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted">
+              <Lock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Free Limit Reached
+            </h1>
+            <p className="text-muted-foreground">
+              You&apos;ve used all 10 free transformations. Upgrade to Pro for unlimited affirmations.
+            </p>
+            <Button onClick={() => router.push("/pricing")} size="lg" className="gap-2">
+              Upgrade to Pro
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/library")} className="text-muted-foreground">
+              Practice existing affirmations
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-col gap-6 px-4 py-8 mx-auto max-w-[600px]">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             What negative thought do you want to quit?
           </h1>
+          {transformCount && !transformCount.unlimited && (
+            <p className="text-sm text-muted-foreground">
+              {transformCount.remaining} of {transformCount.limit} free transformations remaining
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -229,15 +300,22 @@ export function AffirmationCreator() {
       <div className="flex flex-col gap-3 pt-2">
         <Button
           onClick={handleSaveAndPractice}
-          disabled={!selectedId && !customAffirmation}
+          disabled={(!selectedId && !customAffirmation) || isSaving}
           size="lg"
           className="w-full"
         >
-          Save & Practice
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save & Practice"
+          )}
         </Button>
         <Button
           onClick={handleSaveToLibrary}
-          disabled={!selectedId && !customAffirmation}
+          disabled={(!selectedId && !customAffirmation) || isSaving}
           variant="outline"
           size="lg"
           className="w-full bg-transparent"

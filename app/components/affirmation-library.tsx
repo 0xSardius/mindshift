@@ -3,23 +3,31 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, Check, Pencil, Archive, ArchiveRestore, X } from "lucide-react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
+import { Search, Check, Pencil, Archive, ArchiveRestore, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import type { Affirmation } from "@/lib/types"
 
 type FilterTab = "recent" | "practiced" | "archived"
 
-interface AffirmationLibraryProps {
-  initialAffirmations: Affirmation[]
+interface Affirmation {
+  _id: Id<"affirmations">
+  affirmationText: string
+  timesPracticed: number
+  lastPracticedAt?: number
+  archived: boolean
+  createdAt: number
 }
 
-function formatLastPracticed(date: Date | null): string {
-  if (!date) return "Never practiced"
+function formatLastPracticed(timestamp: number | undefined): string {
+  if (!timestamp) return "Never practiced"
+  const date = new Date(timestamp)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
@@ -31,22 +39,29 @@ function formatLastPracticed(date: Date | null): string {
   return `${Math.floor(diffDays / 7)} weeks ago`
 }
 
-function isPracticedToday(date: Date | null): boolean {
-  if (!date) return false
+function isPracticedToday(timestamp: number | undefined): boolean {
+  if (!timestamp) return false
+  const date = new Date(timestamp)
   const now = new Date()
   return (
     date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
   )
 }
 
-export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryProps) {
-  const [affirmations, setAffirmations] = useState<Affirmation[]>(initialAffirmations)
+export function AffirmationLibrary() {
+  const affirmations = useQuery(api.queries.getAffirmations, {})
+  const archiveAffirmation = useMutation(api.mutations.archiveAffirmation)
+  const restoreAffirmation = useMutation(api.mutations.restoreAffirmation)
+  const updateAffirmation = useMutation(api.mutations.updateAffirmation)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<FilterTab>("recent")
   const [editingAffirmation, setEditingAffirmation] = useState<Affirmation | null>(null)
   const [editText, setEditText] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   const counts = useMemo(() => {
+    if (!affirmations) return { recent: 0, practiced: 0, archived: 0 }
     const active = affirmations.filter((a) => !a.archived)
     const archived = affirmations.filter((a) => a.archived)
     return {
@@ -57,17 +72,18 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
   }, [affirmations])
 
   const filteredAffirmations = useMemo(() => {
-    let filtered = affirmations
+    if (!affirmations) return []
+    let filtered = [...affirmations]
 
     // Filter by search query
     if (searchQuery.trim()) {
-      filtered = filtered.filter((a) => a.text.toLowerCase().includes(searchQuery.toLowerCase()))
+      filtered = filtered.filter((a) => a.affirmationText.toLowerCase().includes(searchQuery.toLowerCase()))
     }
 
     // Filter by tab
     switch (activeTab) {
       case "recent":
-        filtered = filtered.filter((a) => !a.archived).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        filtered = filtered.filter((a) => !a.archived).sort((a, b) => b.createdAt - a.createdAt)
         break
       case "practiced":
         filtered = filtered.filter((a) => !a.archived).sort((a, b) => b.timesPracticed - a.timesPracticed)
@@ -80,24 +96,42 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
     return filtered
   }, [affirmations, searchQuery, activeTab])
 
-  const handleArchive = (id: string) => {
-    setAffirmations((prev) => prev.map((a) => (a.id === id ? { ...a, archived: true } : a)))
+  const handleArchive = async (id: Id<"affirmations">) => {
+    try {
+      await archiveAffirmation({ affirmationId: id })
+    } catch (error) {
+      console.error("Failed to archive:", error)
+    }
   }
 
-  const handleRestore = (id: string) => {
-    setAffirmations((prev) => prev.map((a) => (a.id === id ? { ...a, archived: false } : a)))
+  const handleRestore = async (id: Id<"affirmations">) => {
+    try {
+      await restoreAffirmation({ affirmationId: id })
+    } catch (error) {
+      console.error("Failed to restore:", error)
+    }
   }
 
   const handleEditOpen = (affirmation: Affirmation) => {
     setEditingAffirmation(affirmation)
-    setEditText(affirmation.text)
+    setEditText(affirmation.affirmationText)
   }
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editingAffirmation || !editText.trim()) return
-    setAffirmations((prev) => prev.map((a) => (a.id === editingAffirmation.id ? { ...a, text: editText.trim() } : a)))
-    setEditingAffirmation(null)
-    setEditText("")
+    setIsSaving(true)
+    try {
+      await updateAffirmation({
+        affirmationId: editingAffirmation._id,
+        affirmationText: editText.trim(),
+      })
+      setEditingAffirmation(null)
+      setEditText("")
+    } catch (error) {
+      console.error("Failed to update:", error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const renderEmptyState = () => {
@@ -116,8 +150,17 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
         <div className="text-5xl mb-4">🌱</div>
         <p className="text-muted-foreground text-lg mb-4">No affirmations yet</p>
         <Button asChild>
-          <Link href="/create">Create Affirmation</Link>
+          <Link href="/transform">Create Affirmation</Link>
         </Button>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (affirmations === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -181,7 +224,7 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
             <div className="flex flex-col gap-3">
               {filteredAffirmations.map((affirmation) => (
                 <motion.div
-                  key={affirmation.id}
+                  key={affirmation._id}
                   layout
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -203,7 +246,7 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
 
                       <div className="flex-1 min-w-0">
                         {/* Affirmation text */}
-                        <p className="text-foreground leading-relaxed mb-2">{affirmation.text}</p>
+                        <p className="text-foreground leading-relaxed mb-2">{affirmation.affirmationText}</p>
 
                         {/* Stats */}
                         <p className="text-sm text-muted-foreground mb-3">
@@ -214,7 +257,7 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
                         {/* Action buttons */}
                         <div className="flex items-center gap-2">
                           <Button size="sm" asChild>
-                            <Link href={`/practice/${affirmation.id}`}>Practice</Link>
+                            <Link href={`/practice/${affirmation._id}`}>Practice</Link>
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => handleEditOpen(affirmation)}>
                             <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -225,7 +268,7 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
                               size="sm"
                               variant="ghost"
                               className="text-muted-foreground"
-                              onClick={() => handleRestore(affirmation.id)}
+                              onClick={() => handleRestore(affirmation._id)}
                             >
                               <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
                               Restore
@@ -235,7 +278,7 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
                               size="sm"
                               variant="ghost"
                               className="text-muted-foreground"
-                              onClick={() => handleArchive(affirmation.id)}
+                              onClick={() => handleArchive(affirmation._id)}
                             >
                               <Archive className="h-3.5 w-3.5 mr-1" />
                               Archive
@@ -263,8 +306,15 @@ export function AffirmationLibrary({ initialAffirmations }: AffirmationLibraryPr
             <Button variant="outline" onClick={() => setEditingAffirmation(null)}>
               Cancel
             </Button>
-            <Button onClick={handleEditSave} disabled={!editText.trim()}>
-              Save Changes
+            <Button onClick={handleEditSave} disabled={!editText.trim() || isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

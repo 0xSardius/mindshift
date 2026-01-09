@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
 import { ArrowLeft, Pause, Play, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,8 +14,9 @@ import { CelebrationModal } from "@/components/celebration-modal"
 import type { CelebrationData, CelebrationType, Badge } from "@/lib/types"
 
 interface PracticeSessionProps {
+  affirmationId: Id<"affirmations">
   affirmationText: string
-  onComplete: (xpEarned: number) => void
+  onComplete: () => void
   onBack: () => void
 }
 
@@ -46,7 +50,9 @@ function simulateProgression(currentXP: number, xpEarned: number) {
   }
 }
 
-export function PracticeSession({ affirmationText, onComplete, onBack }: PracticeSessionProps) {
+export function PracticeSession({ affirmationId, affirmationText, onComplete, onBack }: PracticeSessionProps) {
+  const completePractice = useMutation(api.mutations.completePractice)
+
   const [currentInput, setCurrentInput] = useState("")
   const [completedReps, setCompletedReps] = useState(0)
   const [xpEarned, setXpEarned] = useState(0)
@@ -55,6 +61,7 @@ export function PracticeSession({ affirmationText, onComplete, onBack }: Practic
   const [showFlash, setShowFlash] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -100,52 +107,66 @@ export function PracticeSession({ affirmationText, onComplete, onBack }: Practic
         }
 
         if (newReps >= TOTAL_REPS) {
-          setTimeout(() => {
-            const mockCurrentXP = 2850
-            const progression = simulateProgression(mockCurrentXP, newXP)
-            const celebrationType = determineCelebrationType(
-              progression.oldLevel,
-              progression.newLevel,
-              progression.oldTier,
-              progression.newTier,
-            )
+          setTimeout(async () => {
+            if (isSubmitting) return
+            setIsSubmitting(true)
 
-            const milestone = celebrationType === "milestone" ? Math.floor(progression.newLevel / 10) * 10 : undefined
+            try {
+              const result = await completePractice({
+                affirmationId,
+                repetitions: newReps,
+                durationSeconds: elapsedSeconds,
+              })
 
-            const newBadges: Badge[] =
-              celebrationType === "tierChange"
-                ? [
-                    {
-                      id: "tier-up",
-                      name: `${progression.newTier} Unlocked`,
-                      icon: progression.newTier === "EXPERT" ? "⚡" : "🎯",
-                      description: `Reached ${progression.newTier} tier`,
-                      earnedAt: new Date(),
-                      requirement: `Reach level ${(["NOVICE", "APPRENTICE", "PRACTITIONER", "EXPERT", "MASTER"].indexOf(progression.newTier) + 1) * 10}`,
-                    },
-                  ]
-                : []
+              const celebrationType = result.celebrationType as CelebrationType
 
-            setCelebrationData({
-              type: celebrationType,
-              xpEarned: newXP,
-              newLevel: progression.newLevel,
-              oldLevel: progression.oldLevel,
-              newTier: progression.newTier,
-              oldTier: progression.oldTier,
-              streakMaintained: true,
-              currentStreak: 7,
-              newBadges: newBadges.length > 0 ? newBadges : undefined,
-              milestone,
-            })
-            setShowCelebration(true)
+              // Map badge IDs to badge objects for display
+              const newBadges: Badge[] = result.newBadges.map((badgeId) => ({
+                id: badgeId,
+                name: badgeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                icon: "🏆",
+                description: `Earned the ${badgeId} badge`,
+                earnedAt: new Date(),
+                requirement: "",
+              }))
+
+              setCelebrationData({
+                type: celebrationType,
+                xpEarned: result.xpEarned,
+                newLevel: result.newLevel,
+                oldLevel: result.oldLevel,
+                newTier: result.newTier,
+                oldTier: result.oldTier,
+                streakMaintained: result.streakMaintained,
+                currentStreak: result.currentStreak,
+                newBadges: newBadges.length > 0 ? newBadges : undefined,
+                milestone: result.milestone?.isMilestone ? result.newLevel : undefined,
+              })
+              setShowCelebration(true)
+            } catch (error) {
+              console.error("Failed to complete practice:", error)
+              // Still show celebration with local data on error
+              setCelebrationData({
+                type: "standard",
+                xpEarned: newXP,
+                newLevel: 1,
+                oldLevel: 1,
+                newTier: "NOVICE",
+                oldTier: "NOVICE",
+                streakMaintained: true,
+                currentStreak: 1,
+              })
+              setShowCelebration(true)
+            } finally {
+              setIsSubmitting(false)
+            }
           }, 400)
         } else {
           textareaRef.current?.focus()
         }
       }
     },
-    [affirmationText, completedReps, xpEarned],
+    [affirmationId, affirmationText, completedReps, completePractice, elapsedSeconds, isSubmitting, xpEarned],
   )
 
   const progressPercent = (completedReps / TOTAL_REPS) * 100
@@ -260,7 +281,7 @@ export function PracticeSession({ affirmationText, onComplete, onBack }: Practic
           data={celebrationData}
           onPracticeAnother={() => {
             setShowCelebration(false)
-            onComplete(xpEarned)
+            onComplete()
           }}
           onGoHome={onBack}
         />

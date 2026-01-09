@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
+import { useClerk } from "@clerk/nextjs"
+import { useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -18,63 +20,111 @@ import {
   Pencil,
   LogOut,
   Star,
-  Footprints,
-  Calendar,
   Trophy,
-  Brain,
-  Moon,
-  Sunrise,
-  Clock,
-  Users,
-  CheckCircle,
-  Layers,
-  Award,
-  Crown,
+  Loader2,
 } from "lucide-react"
-import type { User, Badge, UserSettings, UserStats, PracticeDay } from "@/lib/types"
 import { TierCard } from "./tier-card"
 import { PracticeHeatmap } from "./practice-heatmap"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { BADGE_TYPES } from "@/convex/lib/badgeTypes"
 
-const badgeIcons: Record<string, React.ElementType> = {
-  footprints: Footprints,
-  calendar: Calendar,
-  trophy: Trophy,
-  brain: Brain,
-  flame: Flame,
-  pencil: Pencil,
-  moon: Moon,
-  sunrise: Sunrise,
-  clock: Clock,
-  users: Users,
-  "check-circle": CheckCircle,
-  layers: Layers,
-  award: Award,
-  crown: Crown,
-  star: Star,
+interface ConvexUser {
+  _id: string
+  name?: string
+  imageUrl?: string
+  currentStreak: number
+  longestStreak: number
+  totalXP: number
+  level: number
+  tier: "free" | "pro" | "elite"
+  dailyPracticeGoal: number
+  reminderEnabled: boolean
+  reminderTime?: string
+  anonymousMode: boolean
+}
+
+interface ConvexStats {
+  totalPractices: number
+  totalRepetitions: number
+  totalAffirmations: number
+  archivedAffirmations: number
+  practicesToday: number
+  currentStreak: number
+  longestStreak: number
+  totalXP: number
+  level: number
+}
+
+interface ConvexBadge {
+  _id: string
+  badgeType: string
+  earnedAt: number
+}
+
+interface PracticeDay {
+  date: string
+  count: number
 }
 
 interface ProfileProps {
-  user: User
-  stats: UserStats
-  badges: Badge[]
-  settings: UserSettings
-  isPro?: boolean
+  user: ConvexUser
+  stats: ConvexStats
+  badges: ConvexBadge[]
   practiceData?: PracticeDay[]
 }
 
-export function Profile({ user, stats, badges, settings, isPro = false, practiceData = [] }: ProfileProps) {
-  const [reminderEnabled, setReminderEnabled] = useState(settings.reminderEnabled)
-  const [practiceGoal, setPracticeGoal] = useState(settings.dailyPracticeGoal)
+function getTierName(level: number): string {
+  if (level <= 10) return "NOVICE"
+  if (level <= 20) return "APPRENTICE"
+  if (level <= 30) return "PRACTITIONER"
+  if (level <= 40) return "EXPERT"
+  return "MASTER"
+}
+
+export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps) {
+  const { signOut } = useClerk()
+  const updateSettings = useMutation(api.mutations.updateUserSettings)
+
+  const [reminderEnabled, setReminderEnabled] = useState(user.reminderEnabled)
+  const [practiceGoal, setPracticeGoal] = useState(user.dailyPracticeGoal)
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [tempGoal, setTempGoal] = useState(practiceGoal)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const earnedBadges = badges.filter((b) => b.earnedAt !== null)
+  const isPro = user.tier === "pro" || user.tier === "elite"
+  const tierName = getTierName(user.level)
+  const displayName = user.name || "User"
 
-  const handleSaveGoal = () => {
-    setPracticeGoal(tempGoal)
-    setGoalModalOpen(false)
+  // Get all badge types for display
+  const allBadgeTypes = Object.values(BADGE_TYPES)
+  const earnedBadgeIds = new Set(badges.map((b) => b.badgeType))
+
+  const handleReminderToggle = async (checked: boolean) => {
+    setReminderEnabled(checked)
+    try {
+      await updateSettings({ reminderEnabled: checked })
+    } catch (error) {
+      console.error("Failed to update reminder:", error)
+      setReminderEnabled(!checked) // Revert on error
+    }
+  }
+
+  const handleSaveGoal = async () => {
+    setIsSaving(true)
+    try {
+      await updateSettings({ dailyPracticeGoal: tempGoal })
+      setPracticeGoal(tempGoal)
+      setGoalModalOpen(false)
+    } catch (error) {
+      console.error("Failed to update goal:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSignOut = () => {
+    signOut({ redirectUrl: "/" })
   }
 
   return (
@@ -83,12 +133,12 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border-2 border-border">
-            <AvatarImage src="/friendly-avatar.jpg" alt={user.name} />
-            <AvatarFallback className="text-lg font-semibold">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={user.imageUrl} alt={displayName} />
+            <AvatarFallback className="text-lg font-semibold">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-xl font-bold text-foreground">{user.name}</h1>
-            <p className="text-sm font-medium">{`${user.tier} - Level ${user.level}`}</p>
+            <h1 className="text-xl font-bold text-foreground">{displayName}</h1>
+            <p className="text-sm font-medium">{`${tierName} - Level ${user.level}`}</p>
           </div>
         </div>
         <Button variant="ghost" size="icon" className="h-10 w-10">
@@ -137,7 +187,7 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
               <BarChart3 className="h-5 w-5 text-purple-500" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground">{stats.totalReps.toLocaleString()}</p>
+              <p className="text-xl font-bold text-foreground">{stats.totalRepetitions.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Total Reps</p>
             </div>
           </CardContent>
@@ -156,7 +206,7 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">
-            Badges ({earnedBadges.length}/{badges.length})
+            Badges ({badges.length}/{allBadgeTypes.length})
           </h2>
           <Link href="/profile/badges" className="text-sm font-medium text-primary hover:underline">
             View All Badges
@@ -164,19 +214,18 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
         </div>
         <ScrollArea className="w-full">
           <div className="flex gap-3 pb-2">
-            {badges.map((badge) => {
-              const Icon = badgeIcons[badge.icon] || Star
-              const isEarned = badge.earnedAt !== null
+            {allBadgeTypes.slice(0, 10).map((badgeType) => {
+              const isEarned = earnedBadgeIds.has(badgeType.id)
               return (
                 <div
-                  key={badge.id}
+                  key={badgeType.id}
                   className={cn(
-                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl",
                     isEarned ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground opacity-40",
                   )}
-                  title={badge.name}
+                  title={badgeType.name}
                 >
-                  <Icon className="h-6 w-6" />
+                  {badgeType.icon}
                 </div>
               )
             })}
@@ -194,9 +243,9 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
             <div className="flex items-center justify-between p-4">
               <div>
                 <p className="font-medium text-foreground">Daily reminder</p>
-                {reminderEnabled && <p className="text-sm text-muted-foreground">{settings.reminderTime}</p>}
+                {reminderEnabled && user.reminderTime && <p className="text-sm text-muted-foreground">{user.reminderTime}</p>}
               </div>
-              <Switch checked={reminderEnabled} onCheckedChange={setReminderEnabled} />
+              <Switch checked={reminderEnabled} onCheckedChange={handleReminderToggle} />
             </div>
             {/* Practice Goal */}
             <button
@@ -243,10 +292,10 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
                   <li>Unlimited affirmations</li>
                   <li>Advanced analytics</li>
                   <li>Priority AI generation</li>
-                  <li>Remove ads</li>
+                  <li>Streak Shield protection</li>
                 </ul>
                 <Button className="mt-4 w-full" asChild>
-                  <Link href="/upgrade">Upgrade Now</Link>
+                  <Link href="/pricing">Upgrade Now</Link>
                 </Button>
               </div>
             </div>
@@ -255,7 +304,7 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
       )}
 
       {/* Sign Out */}
-      <Button variant="destructive" className="w-full">
+      <Button variant="destructive" className="w-full" onClick={handleSignOut}>
         <LogOut className="mr-2 h-4 w-4" />
         Sign Out
       </Button>
@@ -292,7 +341,16 @@ export function Profile({ user, stats, badges, settings, isPro = false, practice
             <Button variant="outline" onClick={() => setGoalModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGoal}>Save</Button>
+            <Button onClick={handleSaveGoal} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

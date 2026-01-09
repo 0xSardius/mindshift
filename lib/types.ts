@@ -32,6 +32,9 @@ export interface TodayProgress {
 export interface AffirmationAnalysis {
   cognitiveDistortion: string
   reframingApproach: string
+  detectedLevel?: number
+  theme?: string
+  targetLevel?: number
 }
 
 export interface GeneratedAffirmation {
