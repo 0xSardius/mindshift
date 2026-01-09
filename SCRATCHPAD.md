@@ -210,3 +210,49 @@ app/
 | `4e3f1c9` | Add SCRATCHPAD.md |
 | `a37968f` | Update revenue model ($9.99, 10 lifetime) |
 | `346222e` | Add queries and mutations |
+
+---
+
+## Frontend Wired to Convex (January 8, 2025)
+
+### What We Built
+
+**New Hook** (`hooks/use-sync-user.ts`):
+- Syncs Clerk user to Convex on authentication
+- Creates user in Convex if not exists
+- Returns user data, loading state, auth status
+
+**Pages Updated**:
+- `app/page.tsx` - Home page with real affirmations and progress
+- `app/practice/[id]/page.tsx` - Fetches affirmation by ID
+- `app/library/page.tsx` - Real-time library with Convex
+- `app/leaderboard/page.tsx` - Live leaderboard data
+- `app/profile/page.tsx` - User stats and settings
+- `app/profile/badges/page.tsx` - Earned/locked badges display
+
+**Components Updated**:
+- `affirmation-creator.tsx` - createAffirmation mutation, free tier limit check
+- `practice-session.tsx` - completePractice mutation, real XP/badges
+- `affirmation-library.tsx` - archive/restore/edit mutations
+- `leaderboard.tsx` - Real rankings, anonymous mode toggle
+- `profile.tsx` - Settings persistence, Clerk sign out
+
+### Key Features Now Working
+1. User sync between Clerk and Convex
+2. Creating affirmations with 10 lifetime limit for free tier
+3. Practice sessions that update XP, streaks, award badges
+4. Real-time leaderboard with anonymous mode
+5. Library with search, filter, archive/restore/edit
+6. Profile settings persistence
+7. Sign out functionality
+
+### Commits
+| Commit | Description |
+|--------|-------------|
+| `d80d3ab` | Wire frontend to Convex backend |
+
+### Next Steps
+1. **AI Integration** - Wire `/api/generate` to Claude API
+2. **Test E2E** - Full user flow testing
+3. **PWA Setup** - Service worker, manifest
+4. **Polish** - Error states, loading skeletons
