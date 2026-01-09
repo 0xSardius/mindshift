@@ -252,7 +252,38 @@ app/
 | `d80d3ab` | Wire frontend to Convex backend |
 
 ### Next Steps
-1. **AI Integration** - Wire `/api/generate` to Claude API
-2. **Test E2E** - Full user flow testing
+1. ~~**AI Integration** - Wire `/api/generate` to Claude API~~ ✅ Done
+2. ~~**Test E2E** - Full user flow testing~~ ✅ Done
 3. **PWA Setup** - Service worker, manifest
 4. **Polish** - Error states, loading skeletons
+
+---
+
+## AI Integration Complete (January 8, 2025)
+
+### Claude AI Endpoint (`/api/generate`)
+
+**Implementation:**
+- Vercel AI SDK with `@ai-sdk/anthropic`
+- `generateObject` with structured Zod schema
+- Self-Talk Solution methodology system prompt
+
+**Features:**
+- Identifies Self-Talk Level (1-5) of input
+- Detects cognitive distortions (overgeneralization, catastrophizing, etc.)
+- Transforms to Level 3 (transitional) and Level 4 (identity-based) affirmations
+- Returns 3-5 personalized affirmations
+- Maintains authentic voice, not generic
+
+**Commits:**
+| Commit | Description |
+|--------|-------------|
+| `418b63f` | Wire Claude AI endpoint with Vercel AI SDK |
+
+### App Status: Fully Functional MVP
+- ✅ User authentication (Clerk → Convex sync)
+- ✅ AI-powered affirmation generation (Claude)
+- ✅ Practice sessions with XP/streaks/badges
+- ✅ Library with search/filter/archive
+- ✅ Leaderboard with real rankings
+- ✅ Profile with settings persistence
