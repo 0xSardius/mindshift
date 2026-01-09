@@ -168,3 +168,45 @@ app/
 - Year 1 @ 10K MAU, 5% conversion: ~$60K ARR
 - Year 2 @ 40K MAU, 6% conversion: ~$290K ARR
 - 96%+ gross margin after infrastructure costs
+
+---
+
+## Backend Complete (January 7, 2025)
+
+### Convex Implementation Summary
+
+**Schema** (`convex/schema.ts`):
+- 5 tables: users, affirmations, practices, badges, notifications
+- Proper indexes for all query patterns
+
+**Queries** (`convex/queries.ts`) - 12 queries:
+- User: getCurrentUser, getUser
+- Affirmations: getAffirmations, getAffirmation
+- Stats: getUserStats, getTodayProgress, getTransformationCount
+- Social: getLeaderboard, getUserRankInfo
+- Badges: getBadges, hasBadge
+- Heatmap: getPracticeHistory
+
+**Mutations** (`convex/mutations.ts`) - 12 mutations:
+- User: syncUser, updateUserSettings, updateUserProfile, updateSubscription
+- Affirmations: createAffirmation, archiveAffirmation, restoreAffirmation, updateAffirmation, deleteAffirmation
+- Practice: completePractice (core - handles XP, streaks, badges, celebrations)
+- Badges: awardBadge
+
+**Libs** (`convex/lib/`):
+- xpCalculator.ts - 50 levels, 5 tiers, streak multipliers
+- badgeTypes.ts - 21 badges with criteria checking
+
+### Next Steps
+1. Wire frontend to Convex (replace mock data)
+2. Implement AI generation endpoint (Claude API)
+3. Add Clerk webhook for user sync
+4. Test end-to-end flow
+
+### Commits Today
+| Commit | Description |
+|--------|-------------|
+| `ed1e4a9` | Convex schema, XP calculator, badge types |
+| `4e3f1c9` | Add SCRATCHPAD.md |
+| `a37968f` | Update revenue model ($9.99, 10 lifetime) |
+| `346222e` | Add queries and mutations |
