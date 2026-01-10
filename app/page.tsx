@@ -10,7 +10,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useSyncUser } from "@/hooks/use-sync-user";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { SignInButton, SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -38,9 +38,17 @@ function DashboardSkeleton() {
 }
 
 function AuthenticatedDashboard() {
-  const { user, isLoading: isUserLoading } = useSyncUser();
-  const affirmations = useQuery(api.queries.getAffirmations, { archived: false, limit: 3 });
-  const todayProgress = useQuery(api.queries.getTodayProgress);
+  const { user, isLoading: isUserLoading, isAuthenticated } = useSyncUser();
+
+  // Only query when authenticated
+  const affirmations = useQuery(
+    api.queries.getAffirmations,
+    isAuthenticated ? { archived: false, limit: 3 } : "skip"
+  );
+  const todayProgress = useQuery(
+    api.queries.getTodayProgress,
+    isAuthenticated ? {} : "skip"
+  );
 
   const isLoading = isUserLoading || affirmations === undefined || todayProgress === undefined;
 
@@ -146,6 +154,19 @@ function UnauthenticatedHome() {
 }
 
 export default function HomePage() {
+  const { isLoaded } = useAuth();
+
+  // Show loading state while Clerk is initializing
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <div className="mx-auto max-w-md px-4 py-6">
+          <DashboardSkeleton />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="mx-auto max-w-md px-4 py-6">
