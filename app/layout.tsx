@@ -11,8 +11,16 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Mindshift - Quit Negative Thinking",
   description:
-    "A gamified mental health app to help you break free from negative thought patterns.",
-  generator: "v0.app",
+    "Transform negative self-talk into empowering affirmations through AI-powered practice.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Mindshift",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       {
