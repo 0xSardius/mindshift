@@ -287,3 +287,77 @@ app/
 - ✅ Library with search/filter/archive
 - ✅ Leaderboard with real rankings
 - ✅ Profile with settings persistence
+
+---
+
+## Auth Fix & PWA Setup (January 9, 2025)
+
+### Clerk-Convex Auth Integration
+
+**Problem:** Users getting "Not authenticated" error when signing in. The Convex mutations were being called before the auth token was ready.
+
+**Root Causes:**
+1. Race condition between Clerk auth and Convex token propagation
+2. Missing `convex/auth.config.ts` for JWT validation
+3. Missing JWT template in Clerk dashboard
+
+**Solution:**
+1. Created `convex/auth.config.ts` with Clerk domain
+2. Updated `use-sync-user.ts` to use `useConvexAuth()` hook
+3. Skip queries until `isConvexAuthenticated` is true
+4. Created JWT template named "convex" in Clerk dashboard with `aud: convex`
+
+**Files Changed:**
+- `convex/auth.config.ts` - New file for Clerk JWT validation
+- `hooks/use-sync-user.ts` - Wait for Convex auth before syncing
+- `app/page.tsx` - Loading state while auth initializes
+
+### PWA Setup
+
+**Implementation:**
+- `public/manifest.json` - App metadata, icons, theme colors, standalone display
+- `next.config.ts` - Configured `next-pwa` for service worker generation
+- `app/layout.tsx` - Added PWA meta tags (appleWebApp, manifest link)
+- `scripts/generate-icons.js` - Script to generate 192x192 and 512x512 icons from SVG
+
+**Notes:**
+- Service worker disabled in development (Turbopack compatibility)
+- Service worker generated during production builds
+- Requires HTTPS for installation (deploy to Vercel)
+
+### Commits
+| Commit | Description |
+|--------|-------------|
+| `38d8720` | Fix Clerk-Convex authentication integration |
+| `c58adaf` | Add PWA support for mobile installation |
+
+---
+
+## Remaining Tasks
+
+### High Priority
+- [ ] Deploy to Vercel (test PWA install)
+- [ ] Polish error states and loading UX
+
+### Medium Priority
+- [ ] Stripe integration ($9.99/mo Pro tier)
+- [ ] Rate limiting for AI endpoint
+- [ ] Streak timezone handling
+
+### Low Priority
+- [ ] Clerk webhook for profile sync
+- [ ] Practice heatmap (GitHub-style)
+- [ ] Analytics (PostHog)
+- [ ] Email notifications (Resend)
+- [ ] Landing page for Product Hunt
+
+---
+
+## Total Lines of Code (Claude-assisted)
+
+| Metric | Count |
+|--------|-------|
+| Insertions | 6,400+ |
+| Deletions | 500+ |
+| Net new code | ~5,900 lines |
+| Commits | 12 |
