@@ -137,3 +137,13 @@ Detailed specs are in `app/documentation/`:
 - Contextual upgrade prompts ("8 of 10 transforms used")
 - Streak Shield as key Pro differentiator
 - Push annual plans for better retention
+
+## TODO / Known Issues
+
+### App Icon (Needs Replacement)
+The current app icon (`public/icon.svg`, `public/icon-192x192.png`, `public/icon-512x512.png`) is a placeholder from v0. Need to design and replace with custom Mindshift branding.
+
+To regenerate PWA icons after replacing `icon.svg`:
+```bash
+node scripts/generate-icons.js
+```
