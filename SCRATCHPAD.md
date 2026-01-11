@@ -336,7 +336,8 @@ app/
 ## Remaining Tasks
 
 ### High Priority
-- [ ] Deploy to Vercel (test PWA install)
+- [x] Deploy to Vercel ✅ Live at https://mindshift-zeta.vercel.app
+- [ ] Fix /create route 404 (may be Clerk redirect URL config issue)
 - [ ] Polish error states and loading UX
 
 ### Medium Priority
@@ -349,7 +350,46 @@ app/
 - [ ] Practice heatmap (GitHub-style)
 - [ ] Analytics (PostHog)
 - [ ] Email notifications (Resend)
-- [ ] Landing page for Product Hunt
+- [ ] Replace v0 placeholder icon with custom branding
+
+---
+
+## Known Issues (January 10, 2025)
+
+### /create Route 404
+- Route exists and builds successfully
+- Middleware correctly requires auth (redirects to Clerk sign-in)
+- **Possible cause:** Clerk redirect URLs may need production domain added
+- **To fix:** Check Clerk Dashboard → Paths/URLs → Add `https://mindshift-zeta.vercel.app`
+
+---
+
+## User Flow Consideration
+
+### Current Flow
+1. User lands on `/` (home page)
+2. If not signed in → sees "Welcome to Mindshift" with Sign In button
+3. After sign-in → goes directly to dashboard
+
+### Question: Do we need a dedicated landing page?
+
+**Pros of adding a landing page:**
+- Better first impression for new visitors
+- Explain the value prop before asking for sign-up
+- SEO benefits (more content to index)
+- Social proof, testimonials, feature highlights
+- Standard for SaaS products
+
+**Cons / Current approach benefits:**
+- Faster to MVP (ship now, optimize later)
+- `/how-it-works` already explains the product
+- Less friction to get started
+- Can add landing page later for Product Hunt launch
+
+**Options:**
+1. **Keep current** - Home page doubles as landing for signed-out users
+2. **Separate landing** - New `/` landing page, dashboard moves to `/dashboard`
+3. **Enhanced home** - Improve the signed-out home page with more content
 
 ---
 
@@ -360,4 +400,4 @@ app/
 | Insertions | 6,400+ |
 | Deletions | 500+ |
 | Net new code | ~5,900 lines |
-| Commits | 12 |
+| Commits | 17 |
