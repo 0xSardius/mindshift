@@ -22,7 +22,9 @@ import {
   Star,
   Trophy,
   Loader2,
+  CreditCard,
 } from "lucide-react"
+import { toast } from "sonner"
 import { TierCard } from "./tier-card"
 import { PracticeHeatmap } from "./practice-heatmap"
 import { cn } from "@/lib/utils"
@@ -91,6 +93,7 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [tempGoal, setTempGoal] = useState(practiceGoal)
   const [isSaving, setIsSaving] = useState(false)
+  const [isBillingLoading, setIsBillingLoading] = useState(false)
 
   const isPro = user.tier === "pro" || user.tier === "elite"
   const tierName = getTierName(user.level)
@@ -125,6 +128,29 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
 
   const handleSignOut = () => {
     signOut({ redirectUrl: "/" })
+  }
+
+  const handleManageBilling = async () => {
+    setIsBillingLoading(true)
+    try {
+      const response = await fetch("/api/billing", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to open billing portal")
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error("Billing portal error:", error)
+      toast.error(error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsBillingLoading(false)
+    }
   }
 
   return (
@@ -298,6 +324,36 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
                   <Link href="/pricing">Upgrade Now</Link>
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manage Subscription (Pro Users) */}
+      {isPro && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Pro Subscription</p>
+                  <p className="text-sm text-muted-foreground">Manage billing & invoices</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleManageBilling}
+                disabled={isBillingLoading}
+              >
+                {isBillingLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Manage"
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>

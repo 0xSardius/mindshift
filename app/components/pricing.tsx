@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, X, CreditCard, Lock, Shield, Target, ChevronDown } from "lucide-react"
+import { Check, X, CreditCard, Lock, Shield, Target, ChevronDown, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@clerk/nextjs"
+import { toast } from "sonner"
 
 const plans = [
   {
@@ -135,6 +137,49 @@ const trustSignals = [
 export function Pricing() {
   const [isAnnual, setIsAnnual] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const { isSignedIn } = useAuth()
+
+  const handleCheckout = async () => {
+    if (!isSignedIn) {
+      toast.error("Please sign in to upgrade")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const priceId = isAnnual
+        ? process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL_PRICE_ID
+        : process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+
+      if (!priceId) {
+        toast.error("Pricing not configured. Please try again later.")
+        return
+      }
+
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, isAnnual }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session")
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error("Checkout error:", error)
+      toast.error(error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,18 +251,36 @@ export function Pricing() {
                   ))}
                 </ul>
                 <div className="mt-6 space-y-2">
-                  <Button
-                    asChild={!plan.disabled}
-                    variant={plan.buttonVariant}
-                    className={cn("w-full", plan.highlighted && "shadow-sm")}
-                    disabled={plan.disabled}
-                  >
-                    {plan.disabled ? (
-                      <span>{plan.buttonText}</span>
-                    ) : (
-                      <Link href={plan.id === "free" ? "/create" : "/create"}>{plan.buttonText}</Link>
-                    )}
-                  </Button>
+                  {plan.id === "pro" ? (
+                    <Button
+                      variant={plan.buttonVariant}
+                      className={cn("w-full", plan.highlighted && "shadow-sm")}
+                      onClick={handleCheckout}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        plan.buttonText
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      asChild={!plan.disabled}
+                      variant={plan.buttonVariant}
+                      className={cn("w-full", plan.highlighted && "shadow-sm")}
+                      disabled={plan.disabled}
+                    >
+                      {plan.disabled ? (
+                        <span>{plan.buttonText}</span>
+                      ) : (
+                        <Link href="/create">{plan.buttonText}</Link>
+                      )}
+                    </Button>
+                  )}
                   {plan.note && <p className="text-center text-xs text-muted-foreground">{plan.note}</p>}
                 </div>
               </CardContent>

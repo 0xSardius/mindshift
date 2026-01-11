@@ -28,6 +28,17 @@ export const getUser = query({
   },
 });
 
+// Get user by Clerk ID (for API routes without auth context)
+export const getUserByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+  },
+});
+
 // Get all affirmations for current user
 export const getAffirmations = query({
   args: {
