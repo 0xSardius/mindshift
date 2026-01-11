@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, Brain, Trophy, ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import { TierCard } from "@/components/tier-card";
 import { QuickPractice } from "@/components/quick-practice";
@@ -131,21 +131,96 @@ function AuthenticatedDashboard() {
 
 function UnauthenticatedHome() {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <h1 className="text-3xl font-bold text-foreground mb-4">
-        Welcome to Mindshift
-      </h1>
-      <p className="text-muted-foreground mb-8 max-w-sm">
-        Transform negative self-talk into empowering affirmations through AI-powered practice.
-      </p>
-      <SignInButton mode="modal">
-        <Button size="lg">Get Started</Button>
-      </SignInButton>
-      <div className="mt-6 space-x-4">
-        <Link href="/how-it-works" className="text-sm text-primary hover:underline">
+    <div className="flex flex-col py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium mb-4">
+          <Sparkles className="h-4 w-4" />
+          AI-Powered Mental Wellness
+        </div>
+        <h1 className="text-3xl font-bold text-foreground mb-3 leading-tight">
+          Quit Negative Thinking.<br />
+          <span className="text-primary">Build a Better Mindset.</span>
+        </h1>
+        <p className="text-muted-foreground max-w-sm mx-auto">
+          Transform your inner critic into your biggest supporter with personalized affirmations and gamified practice.
+        </p>
+      </div>
+
+      {/* Transformation Example */}
+      <Card className="border-0 shadow-lg mb-8 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="bg-red-50 dark:bg-red-950/30 p-4 border-b border-red-100 dark:border-red-900/50">
+            <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Your negative thought:</p>
+            <p className="text-foreground italic">"I'm not good enough for this job"</p>
+          </div>
+          <div className="flex items-center justify-center py-2 bg-muted/50">
+            <ArrowRight className="h-5 w-5 text-primary" />
+          </div>
+          <div className="bg-green-50 dark:bg-green-950/30 p-4">
+            <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">AI-transformed affirmation:</p>
+            <p className="text-foreground font-medium">"I am capable and growing every day. My skills and experience make me valuable."</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Benefits */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Brain className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Science-backed methodology</p>
+            <p className="text-sm text-muted-foreground">Based on Self-Talk Solution by Dr. Shad Helmstetter</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">AI-personalized affirmations</p>
+            <p className="text-sm text-muted-foreground">Tailored to your specific thought patterns</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Trophy className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Gamified daily practice</p>
+            <p className="text-sm text-muted-foreground">Earn XP, maintain streaks, unlock badges</p>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="space-y-3">
+        <SignInButton mode="modal">
+          <Button size="lg" className="w-full gap-2">
+            Start Free
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </SignInButton>
+        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Check className="h-4 w-4 text-green-500" />
+            10 free transforms
+          </span>
+          <span className="flex items-center gap-1">
+            <Check className="h-4 w-4 text-green-500" />
+            No credit card
+          </span>
+        </div>
+      </div>
+
+      {/* Links */}
+      <div className="mt-8 flex justify-center gap-6">
+        <Link href="/how-it-works" className="text-sm text-primary hover:underline font-medium">
           How it works
         </Link>
-        <Link href="/pricing" className="text-sm text-primary hover:underline">
+        <Link href="/pricing" className="text-sm text-primary hover:underline font-medium">
           Pricing
         </Link>
       </div>
