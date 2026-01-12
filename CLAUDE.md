@@ -140,6 +140,36 @@ Detailed specs are in `app/documentation/`:
 
 ## TODO / Known Issues
 
+### Pro Features (Need Implementation)
+
+| Feature | Status | Implementation Notes |
+|---------|--------|---------------------|
+| Unlimited transforms | ✅ Done | Tier check in `createAffirmation` mutation |
+| Custom username | ✅ Done | Gated in `updateUserProfile` mutation |
+| Streak Shield | ⚠️ Partial | Logic in `completePractice` needs completion - allow 1 missed day per week for Pro users |
+| Advanced analytics | ❌ Not built | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
+| Export affirmations | ❌ Not built | Add CSV/JSON export button in Library for Pro users |
+| Custom categories | ❌ Not built | Add category field to affirmations schema, filter in Library |
+| Dark mode (Pro-gated) | ❌ Not gated | Currently available to everyone via system theme |
+
+#### Streak Shield Implementation
+In `convex/mutations.ts` `completePractice`:
+- Track `lastStreakShieldUsed` timestamp on user
+- If streak would break AND user is Pro AND shield not used this week → maintain streak
+- Reset shield weekly (check if 7 days since last use)
+
+#### Export Feature
+- Add "Export" button in Library (Pro only)
+- Generate CSV with columns: affirmation text, times practiced, created date, category
+- Or JSON for data portability
+
+#### Advanced Analytics
+- Practice frequency chart (last 30 days)
+- Most practiced affirmations
+- Cognitive distortion breakdown (from AI analysis)
+- Best practice times (morning vs evening)
+- Add to Profile page as collapsible section
+
 ### App Icon (Needs Replacement)
 The current app icon (`public/icon.svg`, `public/icon-192x192.png`, `public/icon-512x512.png`) is a placeholder from v0. Need to design and replace with custom Mindshift branding.
 
