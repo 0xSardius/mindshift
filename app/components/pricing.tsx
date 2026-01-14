@@ -57,46 +57,20 @@ const plans = [
     disabled: false,
     note: "No credit card required",
   },
-  {
-    id: "elite",
-    name: "Elite",
-    badge: "Coming Soon",
-    badgeVariant: "secondary" as const,
-    monthlyPrice: 9.99,
-    annualPrice: 99,
-    description: "For coaches & power users",
-    features: [
-      { name: "Everything in Pro", included: true },
-      { name: "AI coaching insights", included: true },
-      { name: "Pattern analysis", included: true },
-      { name: "Team sharing", included: true },
-      { name: "Coach dashboard", included: true },
-      { name: "API access", included: true },
-    ],
-    buttonText: "Join Waitlist",
-    buttonVariant: "ghost" as const,
-    highlighted: false,
-    disabled: true,
-  },
 ]
 
 const allFeatures = [
-  { name: "Transformations", free: "10 lifetime", pro: "Unlimited", elite: "Unlimited" },
-  { name: "Practice sessions", free: true, pro: true, elite: true },
-  { name: "Gamification & XP", free: true, pro: true, elite: true },
-  { name: "Leaderboard", free: true, pro: true, elite: true },
-  { name: "Activity heatmap", free: true, pro: true, elite: true },
-  { name: "Basic stats", free: true, pro: true, elite: true },
-  { name: "Advanced analytics", free: false, pro: true, elite: true },
-  { name: "Custom categories", free: false, pro: true, elite: true },
-  { name: "Export affirmations", free: false, pro: true, elite: true },
-  { name: "Priority support", free: false, pro: true, elite: true },
-  { name: "Dark mode", free: false, pro: true, elite: true },
-  { name: "AI coaching insights", free: false, pro: false, elite: true },
-  { name: "Pattern analysis", free: false, pro: false, elite: true },
-  { name: "Team sharing", free: false, pro: false, elite: true },
-  { name: "Coach dashboard", free: false, pro: false, elite: true },
-  { name: "API access", free: false, pro: false, elite: true },
+  { name: "Transformations", free: "10 lifetime", pro: "Unlimited" },
+  { name: "Practice sessions", free: true, pro: true },
+  { name: "Gamification & XP", free: true, pro: true },
+  { name: "Leaderboard", free: true, pro: true },
+  { name: "Activity heatmap", free: true, pro: true },
+  { name: "Basic stats", free: true, pro: true },
+  { name: "Advanced analytics", free: false, pro: true },
+  { name: "Custom categories", free: false, pro: true },
+  { name: "Export affirmations", free: false, pro: true },
+  { name: "Priority support", free: false, pro: true },
+  { name: "Dark mode", free: false, pro: true },
 ]
 
 const faqs = [
@@ -211,7 +185,7 @@ export function Pricing() {
 
       {/* Pricing Cards */}
       <section className="px-4 pb-16">
-        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+        <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2">
           {plans.map((plan) => (
             <Card
               key={plan.id}
@@ -310,7 +284,6 @@ export function Pricing() {
                         <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Feature</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Free</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-primary">Pro</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Elite</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -331,15 +304,6 @@ export function Pricing() {
                               <span className="text-sm font-medium text-primary">{feature.pro}</span>
                             ) : feature.pro ? (
                               <Check className="mx-auto h-4 w-4 text-primary" />
-                            ) : (
-                              <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {typeof feature.elite === "string" ? (
-                              <span className="text-sm text-muted-foreground">{feature.elite}</span>
-                            ) : feature.elite ? (
-                              <Check className="mx-auto h-4 w-4 text-green-500" />
                             ) : (
                               <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
                             )}

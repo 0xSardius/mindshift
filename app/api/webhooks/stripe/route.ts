@@ -78,7 +78,8 @@ export async function POST(req: Request) {
         }
 
         // Determine tier based on subscription status
-        const tier = subscription.status === "active" ? "pro" : "free";
+        // "trialing" and "active" both get Pro access
+        const tier = subscription.status === "active" || subscription.status === "trialing" ? "pro" : "free";
 
         await convex.mutation(api.mutations.updateSubscription, {
           clerkId,

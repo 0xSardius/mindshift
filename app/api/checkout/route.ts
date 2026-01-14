@@ -63,6 +63,7 @@ export async function POST(req: Request) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://mindshift-zeta.vercel.app"}/profile?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://mindshift-zeta.vercel.app"}/pricing?canceled=true`,
       subscription_data: {
+        trial_period_days: 7,
         metadata: {
           clerkId: userId,
         },
