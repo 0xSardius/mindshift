@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useClerk } from "@clerk/nextjs"
 import { useMutation } from "convex/react"
+import { useTheme } from "next-themes"
 import { api } from "@/convex/_generated/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,8 @@ import {
   Trophy,
   Loader2,
   CreditCard,
+  Moon,
+  Lock,
 } from "lucide-react"
 import { toast } from "sonner"
 import { TierCard } from "./tier-card"
@@ -86,6 +89,7 @@ function getTierName(level: number): string {
 
 export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps) {
   const { signOut } = useClerk()
+  const { theme, setTheme } = useTheme()
   const updateSettings = useMutation(api.mutations.updateUserSettings)
 
   const [reminderEnabled, setReminderEnabled] = useState(user.reminderEnabled)
@@ -96,6 +100,28 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
   const [isBillingLoading, setIsBillingLoading] = useState(false)
 
   const isPro = user.tier === "pro" || user.tier === "elite"
+  const isDarkMode = theme === "dark"
+
+  // Force light mode for non-Pro users
+  useEffect(() => {
+    if (!isPro && theme === "dark") {
+      setTheme("light")
+    }
+  }, [isPro, theme, setTheme])
+
+  const handleDarkModeToggle = (checked: boolean) => {
+    if (!isPro) {
+      toast.error("Dark mode is a Pro feature", {
+        action: {
+          label: "Upgrade",
+          onClick: () => window.location.href = "/pricing"
+        }
+      })
+      return
+    }
+    setTheme(checked ? "dark" : "light")
+  }
+
   const tierName = getTierName(user.level)
   const displayName = user.name || "User"
 
@@ -265,6 +291,24 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
         <h2 className="mb-3 text-lg font-semibold text-foreground">Settings</h2>
         <Card className="border-0 shadow-sm">
           <CardContent className="divide-y divide-border p-0">
+            {/* Dark Mode (Pro Feature) */}
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-2">
+                <Moon className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground">Dark mode</p>
+                    {!isPro && <Lock className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                  {!isPro && <p className="text-xs text-muted-foreground">Pro feature</p>}
+                </div>
+              </div>
+              <Switch
+                checked={isPro && isDarkMode}
+                onCheckedChange={handleDarkModeToggle}
+                disabled={!isPro}
+              />
+            </div>
             {/* Daily Reminder */}
             <div className="flex items-center justify-between p-4">
               <div>

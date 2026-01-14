@@ -195,6 +195,9 @@ export const completePractice = mutation({
 
     // Calculate streak
     let newStreak = user.currentStreak;
+    let usedStreakShield = false;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
     if (user.lastPracticeDate === today) {
       // Already practiced today, streak stays the same
       newStreak = user.currentStreak;
@@ -205,13 +208,17 @@ export const completePractice = mutation({
       // First ever practice
       newStreak = 1;
     } else {
-      // Streak broken (unless Pro user with Streak Shield)
-      if (user.tier === "pro" || user.tier === "elite") {
-        // Check if they've used streak shield this week
-        // For now, simple implementation - just maintain streak
-        // TODO: Implement proper streak shield tracking
+      // Streak would be broken - check for Streak Shield (Pro feature)
+      const isPro = user.tier === "pro" || user.tier === "elite";
+      const shieldAvailable = !user.lastStreakShieldUsed ||
+        (now - user.lastStreakShieldUsed) >= SEVEN_DAYS_MS;
+
+      if (isPro && shieldAvailable && user.currentStreak > 0) {
+        // Use Streak Shield - maintain streak instead of resetting
         newStreak = user.currentStreak + 1;
+        usedStreakShield = true;
       } else {
+        // Streak broken
         newStreak = 1;
       }
     }
@@ -232,14 +239,21 @@ export const completePractice = mutation({
 
     // Update user
     const longestStreak = Math.max(user.longestStreak, newStreak);
-    await ctx.db.patch(user._id, {
+    const userUpdate: Record<string, unknown> = {
       totalXP: newTotalXP,
       level: newLevel,
       currentStreak: newStreak,
       longestStreak,
       lastPracticeDate: today,
       updatedAt: now,
-    });
+    };
+
+    // Record streak shield usage if it was used
+    if (usedStreakShield) {
+      userUpdate.lastStreakShieldUsed = now;
+    }
+
+    await ctx.db.patch(user._id, userUpdate);
 
     // Create practice record
     await ctx.db.insert("practices", {
@@ -318,6 +332,7 @@ export const completePractice = mutation({
       currentStreak: newStreak,
       longestStreak,
       streakMaintained: true,
+      usedStreakShield,
       newBadges,
       celebrationType,
       tierChanged,

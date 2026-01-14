@@ -6,13 +6,15 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
-import { Search, Check, Pencil, Archive, ArchiveRestore, X, Loader2 } from "lucide-react"
+import { Search, Check, Pencil, Archive, ArchiveRestore, X, Loader2, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 
 type FilterTab = "recent" | "practiced" | "archived"
 
@@ -50,6 +52,7 @@ function isPracticedToday(timestamp: number | undefined): boolean {
 
 export function AffirmationLibrary() {
   const affirmations = useQuery(api.queries.getAffirmations, {})
+  const user = useQuery(api.queries.getCurrentUser)
   const archiveAffirmation = useMutation(api.mutations.archiveAffirmation)
   const restoreAffirmation = useMutation(api.mutations.restoreAffirmation)
   const updateAffirmation = useMutation(api.mutations.updateAffirmation)
@@ -59,6 +62,59 @@ export function AffirmationLibrary() {
   const [editingAffirmation, setEditingAffirmation] = useState<Affirmation | null>(null)
   const [editText, setEditText] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+
+  const isPro = user?.tier === "pro" || user?.tier === "elite"
+
+  const handleExportCSV = () => {
+    if (!affirmations || affirmations.length === 0) {
+      toast.error("No affirmations to export")
+      return
+    }
+
+    const activeAffirmations = affirmations.filter(a => !a.archived)
+    const headers = ["Affirmation", "Times Practiced", "Created Date", "Last Practiced"]
+    const rows = activeAffirmations.map(a => [
+      `"${a.affirmationText.replace(/"/g, '""')}"`,
+      a.timesPracticed.toString(),
+      new Date(a.createdAt).toLocaleDateString(),
+      a.lastPracticedAt ? new Date(a.lastPracticedAt).toLocaleDateString() : "Never"
+    ])
+
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n")
+    downloadFile(csv, "mindshift-affirmations.csv", "text/csv")
+    toast.success("Exported to CSV")
+  }
+
+  const handleExportJSON = () => {
+    if (!affirmations || affirmations.length === 0) {
+      toast.error("No affirmations to export")
+      return
+    }
+
+    const activeAffirmations = affirmations.filter(a => !a.archived)
+    const data = activeAffirmations.map(a => ({
+      affirmation: a.affirmationText,
+      timesPracticed: a.timesPracticed,
+      createdAt: new Date(a.createdAt).toISOString(),
+      lastPracticedAt: a.lastPracticedAt ? new Date(a.lastPracticedAt).toISOString() : null
+    }))
+
+    const json = JSON.stringify(data, null, 2)
+    downloadFile(json, "mindshift-affirmations.json", "application/json")
+    toast.success("Exported to JSON")
+  }
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   const counts = useMemo(() => {
     if (!affirmations) return { recent: 0, practiced: 0, archived: 0 }
@@ -170,7 +226,27 @@ export function AffirmationLibrary() {
       {/* Sticky header with search */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Your Affirmations</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-foreground">Your Affirmations</h1>
+            {isPro && affirmations && affirmations.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportJSON}>
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input

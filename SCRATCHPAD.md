@@ -401,3 +401,88 @@ app/
 | Deletions | 500+ |
 | Net new code | ~5,900 lines |
 | Commits | 17 |
+
+---
+
+## Pro Feature Value Roadmap (January 13, 2025)
+
+### The Problem
+At $9.99/mo, Pro currently only offers "unlimited transforms" - not enough value. Need to ship real differentiators before monetizing.
+
+### Current Pro Feature Status
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Unlimited transforms | ✅ Working | - |
+| Streak Shield | ⚠️ Partial | 🔴 Quick Win |
+| Export affirmations | ❌ Not built | 🔴 Quick Win |
+| Dark mode (gated) | ⚠️ Not gated | 🔴 Quick Win |
+| Custom categories | ❌ Not built | 🟡 Medium |
+| Advanced analytics | ❌ Not built | 🟡 Medium |
+| Weekly AI insight email | ❌ Not built | 🟡 Medium |
+| Practice reminders | ❌ Not built | 🟡 Medium |
+| AI coaching insights | ❌ Not built | 🟢 Later |
+
+### Quick Wins (Ship First)
+
+**1. Streak Shield**
+- Allow Pro users to miss 1 day/week without losing streak
+- Track `lastStreakShieldUsed` timestamp on user
+- Reset weekly (7 days since last use)
+- Location: `convex/mutations.ts` completePractice function
+
+**2. Export Affirmations**
+- Add "Export" button in Library (Pro only)
+- CSV format: affirmation text, times practiced, created date
+- JSON option for data portability
+
+**3. Gate Dark Mode**
+- Currently available to everyone via system theme
+- Add Pro check before allowing theme toggle
+- Free users stay on light mode
+
+### Medium Priority (After Quick Wins)
+
+**4. Custom Categories**
+- Add `category` field to affirmations schema
+- Let Pro users tag/organize affirmations
+- Filter by category in Library
+
+**5. Advanced Analytics**
+- Practice frequency chart (last 30 days)
+- Most practiced affirmations
+- Cognitive distortion breakdown
+- Best practice times
+
+**6. Weekly AI Insight Email**
+- Summarize weekly practice patterns
+- Highlight cognitive distortions being addressed
+- Encouragement based on progress
+- Use Resend for email delivery
+
+### Later (Post-Launch)
+
+**7. AI Coaching Insights**
+- Pattern analysis across all affirmations
+- Personalized recommendations
+- Progress trajectory predictions
+
+---
+
+## Stripe Integration Fixed (January 13, 2025)
+
+### Issues Resolved
+1. **404 on checkout** - Clerk middleware was rewriting `/api/checkout` to 404
+   - Fix: Added `/api/checkout` and `/api/billing` to public routes
+2. **Missing trial logic** - Button said "7-Day Free Trial" but charged immediately
+   - Fix: Added `trial_period_days: 7` to checkout session
+3. **Trialing status** - Webhook didn't treat "trialing" as Pro
+   - Fix: Updated webhook to grant Pro access for trialing users
+4. **Elite tier** - Same price as Pro, not implemented
+   - Fix: Removed Elite tier, simplified to Free + Pro
+
+### Commits
+| Commit | Description |
+|--------|-------------|
+| `dc3d6ea` | Fix Stripe checkout 404 (middleware public routes) |
+| `9e5d7be` | Add 7-day trial, remove Elite tier |

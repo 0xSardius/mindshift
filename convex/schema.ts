@@ -32,6 +32,9 @@ export default defineSchema({
     subscriptionStatus: v.optional(v.string()),
     subscriptionEndsAt: v.optional(v.number()),
 
+    // Pro Features
+    lastStreakShieldUsed: v.optional(v.number()), // Timestamp of last streak shield use
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
