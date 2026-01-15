@@ -386,9 +386,10 @@ export const updateUserSettings = mutation({
   },
 });
 
-// Update user profile (username)
+// Update user profile (name and username)
 export const updateUserProfile = mutation({
   args: {
+    name: v.optional(v.string()),
     username: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -423,10 +424,18 @@ export const updateUserProfile = mutation({
       }
     }
 
-    await ctx.db.patch(user._id, {
-      username: args.username,
+    const updates: { name?: string; username?: string; updatedAt: number } = {
       updatedAt: Date.now(),
-    });
+    };
+
+    if (args.name !== undefined) {
+      updates.name = args.name;
+    }
+    if (args.username !== undefined) {
+      updates.username = args.username;
+    }
+
+    await ctx.db.patch(user._id, updates);
 
     return { success: true };
   },

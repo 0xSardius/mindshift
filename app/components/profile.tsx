@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Flame,
   Zap,
@@ -21,7 +23,6 @@ import {
   Pencil,
   LogOut,
   Star,
-  Trophy,
   Loader2,
   CreditCard,
   Moon,
@@ -88,9 +89,10 @@ function getTierName(level: number): string {
 }
 
 export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps) {
-  const { signOut } = useClerk()
+  const { signOut, openUserProfile } = useClerk()
   const { theme, setTheme } = useTheme()
   const updateSettings = useMutation(api.mutations.updateUserSettings)
+  const updateProfile = useMutation(api.mutations.updateUserProfile)
 
   const [reminderEnabled, setReminderEnabled] = useState(user.reminderEnabled)
   const [practiceGoal, setPracticeGoal] = useState(user.dailyPracticeGoal)
@@ -98,6 +100,9 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
   const [tempGoal, setTempGoal] = useState(practiceGoal)
   const [isSaving, setIsSaving] = useState(false)
   const [isBillingLoading, setIsBillingLoading] = useState(false)
+  const [nameModalOpen, setNameModalOpen] = useState(false)
+  const [tempName, setTempName] = useState(user.name || "")
+  const [isSavingName, setIsSavingName] = useState(false)
 
   const isPro = user.tier === "pro" || user.tier === "elite"
   const isDarkMode = theme === "dark"
@@ -152,6 +157,24 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
     }
   }
 
+  const handleSaveName = async () => {
+    if (!tempName.trim()) {
+      toast.error("Name cannot be empty")
+      return
+    }
+    setIsSavingName(true)
+    try {
+      await updateProfile({ name: tempName.trim() })
+      setNameModalOpen(false)
+      toast.success("Name updated successfully")
+    } catch (error) {
+      console.error("Failed to update name:", error)
+      toast.error("Failed to update name")
+    } finally {
+      setIsSavingName(false)
+    }
+  }
+
   const handleSignOut = () => {
     signOut({ redirectUrl: "/" })
   }
@@ -193,7 +216,15 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
             <p className="text-sm font-medium">{`${tierName} - Level ${user.level}`}</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-10 w-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => {
+            setTempName(user.name || "")
+            setNameModalOpen(true)
+          }}
+        >
           <Pencil className="h-5 w-5" />
         </Button>
       </div>
@@ -340,7 +371,10 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
             {/* Account Settings */}
-            <button className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors">
+            <button
+              onClick={() => openUserProfile()}
+              className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+            >
               <p className="font-medium text-foreground">Account settings</p>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -358,7 +392,7 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-foreground">Upgrade to Pro</h3>
-                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc list-inside">
                   <li>Unlimited affirmations</li>
                   <li>Advanced analytics</li>
                   <li>Priority AI generation</li>
@@ -443,6 +477,43 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
             </Button>
             <Button onClick={handleSaveGoal} disabled={isSaving}>
               {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Name Modal */}
+      <Dialog open={nameModalOpen} onOpenChange={setNameModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Name</DialogTitle>
+            <DialogDescription>
+              Update your display name. This is how you&apos;ll appear in the app.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              placeholder="Enter your name"
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNameModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveName} disabled={isSavingName}>
+              {isSavingName ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
