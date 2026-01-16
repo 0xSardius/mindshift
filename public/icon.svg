@@ -7,13 +7,19 @@
   </defs>
   <!-- Background -->
   <rect width="180" height="180" rx="40" fill="url(#brandGradient)"/>
-  <!-- Stylized M -->
+  <!-- Stylized M with dissolving effect hint -->
   <path
-    d="M40 135 L40 55 L90 95 L140 55 L140 135"
+    d="M45 130 L45 60 L90 95 L135 60 L135 130"
     stroke="white"
-    stroke-width="16"
+    stroke-width="14"
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"
+    opacity="0.95"
   />
+  <!-- Particle hints -->
+  <circle cx="140" cy="55" r="3" fill="white" opacity="0.6"/>
+  <circle cx="148" cy="65" r="2" fill="white" opacity="0.4"/>
+  <circle cx="152" cy="50" r="2.5" fill="white" opacity="0.5"/>
+  <circle cx="145" cy="45" r="1.5" fill="white" opacity="0.3"/>
 </svg>

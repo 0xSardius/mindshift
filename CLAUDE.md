@@ -138,38 +138,24 @@ Detailed specs are in `app/documentation/`:
 - Streak Shield as key Pro differentiator
 - Push annual plans for better retention
 
+## Live URL
+
+https://mindshift-zeta.vercel.app/
+
 ## TODO / Known Issues
 
-### Pro Features (Need Implementation)
+### Pro Features
 
 | Feature | Status | Implementation Notes |
 |---------|--------|---------------------|
 | Unlimited transforms | ✅ Done | Tier check in `createAffirmation` mutation |
 | Custom username | ✅ Done | Gated in `updateUserProfile` mutation |
 | Streak Shield | ✅ Done | Logic in `completePractice` - allows 1 missed day per week for Pro users |
-| Advanced analytics | ❌ Not built | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
 | Export affirmations | ✅ Done | CSV export button in Library for Pro users |
-| Custom categories | ❌ Not built | Add category field to affirmations schema, filter in Library |
 | Dark mode (Pro-gated) | ✅ Done | Gated in Profile settings with lock icon |
-| Save multiple affirmations | ❌ Not built | Allow users to save multiple AI-generated affirmations per transformation (Pro feature?) |
-
-#### Streak Shield Implementation
-In `convex/mutations.ts` `completePractice`:
-- Track `lastStreakShieldUsed` timestamp on user
-- If streak would break AND user is Pro AND shield not used this week → maintain streak
-- Reset shield weekly (check if 7 days since last use)
-
-#### Export Feature
-- Add "Export" button in Library (Pro only)
-- Generate CSV with columns: affirmation text, times practiced, created date, category
-- Or JSON for data portability
-
-#### Advanced Analytics
-- Practice frequency chart (last 30 days)
-- Most practiced affirmations
-- Cognitive distortion breakdown (from AI analysis)
-- Best practice times (morning vs evening)
-- Add to Profile page as collapsible section
+| Advanced analytics | ❌ Backlog | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
+| Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
+| Save multiple affirmations | ❌ Backlog | Allow users to save multiple AI-generated affirmations per transformation |
 
 ### UX Improvements (Backlog)
 
@@ -177,11 +163,21 @@ In `convex/mutations.ts` `completePractice`:
 |-------------|-------|
 | AI generation loading indicator | Sonnet 4.5 takes longer to generate; add visual feedback (skeleton, spinner, or streaming) |
 | Transformation result caching | Consider caching AI results briefly to avoid re-generation on back navigation |
+| Activity heatmap | GitHub-style practice visualization (spec in `mindshift-practice-heatmap.md`) |
 
-### App Icon (Needs Replacement)
-The current app icon (`public/icon.svg`, `public/icon-192x192.png`, `public/icon-512x512.png`) is a placeholder from v0. Need to design and replace with custom Mindshift branding.
+### Integrations (Backlog)
 
-To regenerate PWA icons after replacing `icon.svg`:
+| Integration | Purpose |
+|-------------|---------|
+| PostHog | Analytics |
+| Sentry | Error monitoring |
+| Resend | Weekly AI insight emails for Pro users |
+
+### App Icons
+
+Custom Mindshift branding complete. Source file: `public/icon-source.png`
+
+To regenerate all icons (PWA, favicon, OG image):
 ```bash
 node scripts/generate-icons.js
 ```
