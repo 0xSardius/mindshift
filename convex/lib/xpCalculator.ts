@@ -1,8 +1,8 @@
 // Base XP values
-export const XP_COMPLETE_PRACTICE = 15;
+export const XP_PER_REP = 1.5; // Proportional XP per repetition
 export const XP_FIRST_TODAY = 10;
-export const XP_FULL_SESSION_10 = 5;
-export const XP_FULL_SESSION_20 = 15;
+export const XP_FULL_SESSION_10 = 5; // Bonus for completing 10 reps
+export const XP_FULL_SESSION_20 = 15; // Extra bonus for 20 reps
 export const XP_NEW_AFFIRMATION = 25;
 export const XP_MORNING_PRACTICE = 10; // Before 10am
 export const XP_CONSISTENCY_BONUS = 20; // 5 days this week
@@ -120,10 +120,37 @@ export const LEVEL_TIERS = {
 
 export type TierName = keyof typeof LEVEL_TIERS;
 
-// Calculate level from total XP
+// Calculate XP required for any level (supports levels beyond 50)
+export function getXPRequiredForLevel(level: number): number {
+  if (level <= 50) {
+    return LEVEL_THRESHOLDS[level - 1].xpRequired;
+  }
+
+  // For levels beyond 50, continue the curve
+  // Pattern: increment increases by 5 each level (265 at L50, 270 at L51, etc.)
+  let xp = LEVEL_THRESHOLDS[49].xpRequired; // Level 50's XP (7105)
+  for (let l = 51; l <= level; l++) {
+    const increment = 220 + (l * 5); // Continues the pattern
+    xp += increment;
+  }
+  return xp;
+}
+
+// Calculate level from total XP (uncapped)
 export function calculateLevel(totalXP: number): number {
+  // Check predefined thresholds first (levels 1-50)
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
+      if (i === LEVEL_THRESHOLDS.length - 1) {
+        // At or beyond level 50, calculate dynamically
+        let level = 50;
+        let xpForNextLevel = getXPRequiredForLevel(level + 1);
+        while (totalXP >= xpForNextLevel) {
+          level++;
+          xpForNextLevel = getXPRequiredForLevel(level + 1);
+        }
+        return level;
+      }
       return LEVEL_THRESHOLDS[i].level;
     }
   }
@@ -148,17 +175,13 @@ export function getTierName(level: number): TierName {
   return "MASTER";
 }
 
-// Calculate XP needed for next level
+// Calculate XP needed for next level (supports uncapped levels)
 export function calculateXPForNextLevel(
   currentXP: number,
   currentLevel: number
 ): { xpToNext: number; xpProgress: number; xpRequired: number } {
-  if (currentLevel >= 50) {
-    return { xpToNext: 0, xpProgress: 0, xpRequired: 0 };
-  }
-
-  const currentThreshold = LEVEL_THRESHOLDS[currentLevel - 1].xpRequired;
-  const nextThreshold = LEVEL_THRESHOLDS[currentLevel].xpRequired;
+  const currentThreshold = getXPRequiredForLevel(currentLevel);
+  const nextThreshold = getXPRequiredForLevel(currentLevel + 1);
   const xpRequired = nextThreshold - currentThreshold;
   const xpProgress = currentXP - currentThreshold;
   const xpToNext = nextThreshold - currentXP;
@@ -166,7 +189,7 @@ export function calculateXPForNextLevel(
   return { xpToNext, xpProgress, xpRequired };
 }
 
-// Calculate XP earned for a practice session
+// Calculate XP earned for a practice session (proportional to reps)
 export function calculatePracticeXP(params: {
   repetitions: number;
   streak: number;
@@ -176,14 +199,15 @@ export function calculatePracticeXP(params: {
 }): number {
   const { repetitions, streak, isFirstToday, isNewAffirmation, isMorningPractice } = params;
 
-  let baseXP = XP_COMPLETE_PRACTICE;
+  // Base XP is proportional to reps (1.5 XP per rep)
+  let baseXP = repetitions * XP_PER_REP;
 
   // Bonus for first practice today
   if (isFirstToday) {
     baseXP += XP_FIRST_TODAY;
   }
 
-  // Bonus for full session (10 reps)
+  // Bonus for completing full session (10 reps)
   if (repetitions >= 10) {
     baseXP += XP_FULL_SESSION_10;
   }
