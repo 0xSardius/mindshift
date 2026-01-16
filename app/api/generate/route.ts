@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     }
 
     const { object } = await generateObject({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: anthropic("claude-sonnet-4-5-20241022"),
       schema: AffirmationResponseSchema,
       system: SYSTEM_PROMPT,
       prompt: `Transform this negative self-talk into empowering affirmations:
