@@ -1,8 +1,10 @@
 "use client"
 
-import { memo, useMemo } from "react"
+import { memo, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface PracticeDay {
@@ -29,13 +31,14 @@ const HeatmapCell = memo(function HeatmapCell({
 }) {
   const getColorClass = (count: number) => {
     if (count === 0) return "bg-muted"
-    if (count <= 2) return "bg-emerald-200"
-    if (count <= 4) return "bg-emerald-400"
-    return "bg-emerald-600"
+    if (count <= 2) return "bg-emerald-200 dark:bg-emerald-900"
+    if (count <= 4) return "bg-emerald-400 dark:bg-emerald-700"
+    return "bg-emerald-600 dark:bg-emerald-500"
   }
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
+    const [year, month, day] = dateStr.split("-").map(Number)
+    const date = new Date(year, month - 1, day)
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -69,89 +72,169 @@ const HeatmapCell = memo(function HeatmapCell({
   )
 })
 
+// Helper to format date as YYYY-MM-DD without timezone issues
+function formatDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export const PracticeHeatmap = memo(function PracticeHeatmap({ practiceData, onDateClick }: PracticeHeatmapProps) {
-  const { weeks, monthLabels, todayStr } = useMemo(() => {
+  const [yearOffset, setYearOffset] = useState(0) // 0 = current year, -1 = last year, etc.
+
+  const { weeks, monthLabels, todayStr, displayYear, totalPractices, canGoNext } = useMemo(() => {
     const today = new Date()
-    const todayStr = today.toISOString().split("T")[0]
+    const todayStr = formatDateString(today)
+    const currentYear = today.getFullYear()
+    const displayYear = currentYear + yearOffset
 
     // Create a map for quick lookup
     const dataMap = new Map(practiceData.map((d) => [d.date, d.count]))
 
-    // Get start date (52 weeks ago, aligned to Sunday)
-    const startDate = new Date(today)
-    startDate.setDate(startDate.getDate() - 364)
-    // Align to Sunday
+    // Determine date range for the selected year
+    let startDate: Date
+    let endDate: Date
+
+    if (yearOffset === 0) {
+      // Current year: show from Jan 1 to today
+      endDate = new Date(today)
+      startDate = new Date(displayYear, 0, 1) // Jan 1 of current year
+    } else {
+      // Previous years: show full year
+      startDate = new Date(displayYear, 0, 1) // Jan 1
+      endDate = new Date(displayYear, 11, 31) // Dec 31
+    }
+
+    // Align start to Sunday (start of week)
     const startDayOfWeek = startDate.getDay()
-    startDate.setDate(startDate.getDate() - startDayOfWeek)
+    if (startDayOfWeek !== 0) {
+      startDate.setDate(startDate.getDate() - startDayOfWeek)
+    }
 
     // Generate all dates
-    const weeks: { date: string; count: number }[][] = []
-    let currentWeek: { date: string; count: number }[] = []
+    const weeks: { date: string; count: number; isPlaceholder: boolean }[][] = []
+    let currentWeek: { date: string; count: number; isPlaceholder: boolean }[] = []
 
     const current = new Date(startDate)
-    const endDate = new Date(today)
 
     // Track months for labels
     const monthPositions: { month: string; weekIndex: number }[] = []
     let lastMonth = -1
+    let weekIndex = 0
+
+    // Calculate total practices for the period
+    let totalPractices = 0
 
     while (current <= endDate) {
-      const dateStr = current.toISOString().split("T")[0]
+      const dateStr = formatDateString(current)
       const count = dataMap.get(dateStr) ?? 0
+      const isInDisplayYear = current.getFullYear() === displayYear
 
-      // Track month changes
-      if (current.getMonth() !== lastMonth) {
+      if (isInDisplayYear) {
+        totalPractices += count
+      }
+
+      // Track month changes (only for dates in the display year)
+      if (isInDisplayYear && current.getMonth() !== lastMonth) {
         monthPositions.push({
           month: current.toLocaleDateString("en-US", { month: "short" }),
-          weekIndex: weeks.length,
+          weekIndex: weekIndex,
         })
         lastMonth = current.getMonth()
       }
 
-      currentWeek.push({ date: dateStr, count })
+      // Mark as placeholder if outside display year (for alignment)
+      currentWeek.push({
+        date: dateStr,
+        count: isInDisplayYear ? count : 0,
+        isPlaceholder: !isInDisplayYear,
+      })
 
-      // Start a new week on Sunday
+      // Start a new week after Saturday (day 6)
       if (current.getDay() === 6) {
         weeks.push(currentWeek)
         currentWeek = []
+        weekIndex++
       }
 
       current.setDate(current.getDate() + 1)
     }
 
-    // Push remaining days
+    // Push remaining days in the last week
     if (currentWeek.length > 0) {
+      // Pad the last week with empty cells if needed
+      while (currentWeek.length < 7) {
+        currentWeek.push({
+          date: "",
+          count: 0,
+          isPlaceholder: true,
+        })
+      }
       weeks.push(currentWeek)
     }
 
-    return { weeks, monthLabels: monthPositions, todayStr }
-  }, [practiceData])
+    return {
+      weeks,
+      monthLabels: monthPositions,
+      todayStr,
+      displayYear,
+      totalPractices,
+      canGoNext: yearOffset < 0,
+    }
+  }, [practiceData, yearOffset])
 
-  const dayLabels = ["", "Mon", "", "Wed", "", "Fri", ""]
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Activity This Year</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold">
+            {totalPractices} practice{totalPractices !== 1 ? "s" : ""} in {displayYear}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setYearOffset((prev) => prev - 1)}
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium w-12 text-center">{displayYear}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setYearOffset((prev) => prev + 1)}
+              disabled={!canGoNext}
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <div className="min-w-[680px]">
             {/* Month labels */}
-            <div className="mb-1 flex pl-8">
-              {monthLabels.map((m, i) => (
-                <div
-                  key={`${m.month}-${i}`}
-                  className="text-xs text-muted-foreground"
-                  style={{
-                    marginLeft: i === 0 ? `${m.weekIndex * 14}px` : undefined,
-                    width:
-                      i < monthLabels.length - 1 ? `${(monthLabels[i + 1].weekIndex - m.weekIndex) * 14}px` : "auto",
-                  }}
-                >
-                  {m.month}
-                </div>
-              ))}
+            <div className="mb-1 flex pl-8 text-xs text-muted-foreground">
+              {monthLabels.map((m, i) => {
+                const nextWeekIndex = i < monthLabels.length - 1 ? monthLabels[i + 1].weekIndex : weeks.length
+                const width = (nextWeekIndex - m.weekIndex) * 14
+                return (
+                  <div
+                    key={`${m.month}-${i}`}
+                    style={{ width: `${width}px` }}
+                    className="shrink-0"
+                  >
+                    {m.month}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Heatmap grid */}
@@ -159,8 +242,11 @@ export const PracticeHeatmap = memo(function PracticeHeatmap({ practiceData, onD
               {/* Day labels */}
               <div className="flex flex-col gap-[2px] pr-1">
                 {dayLabels.map((label, i) => (
-                  <div key={i} className="flex h-[10px] md:h-[12px] items-center text-[10px] text-muted-foreground">
-                    {label}
+                  <div
+                    key={i}
+                    className="flex h-[10px] md:h-[12px] items-center justify-end text-[9px] text-muted-foreground w-6"
+                  >
+                    {i % 2 === 1 ? label.slice(0, 1) : ""}
                   </div>
                 ))}
               </div>
@@ -168,20 +254,21 @@ export const PracticeHeatmap = memo(function PracticeHeatmap({ practiceData, onD
               {/* Weeks */}
               {weeks.map((week, weekIndex) => (
                 <div key={weekIndex} className="flex flex-col gap-[2px]">
-                  {/* Fill empty days at start of first week */}
-                  {weekIndex === 0 &&
-                    week.length < 7 &&
-                    Array.from({ length: 7 - week.length }).map((_, i) => (
-                      <div key={`empty-${i}`} className="h-[10px] w-[10px] md:h-[12px] md:w-[12px]" />
-                    ))}
-                  {week.map((day) => (
-                    <HeatmapCell
-                      key={day.date}
-                      date={day.date}
-                      count={day.count}
-                      isToday={day.date === todayStr}
-                      onClick={onDateClick ? () => onDateClick(day.date) : undefined}
-                    />
+                  {week.map((day, dayIndex) => (
+                    day.isPlaceholder ? (
+                      <div
+                        key={`${weekIndex}-${dayIndex}`}
+                        className="h-[10px] w-[10px] md:h-[12px] md:w-[12px]"
+                      />
+                    ) : (
+                      <HeatmapCell
+                        key={day.date}
+                        date={day.date}
+                        count={day.count}
+                        isToday={day.date === todayStr}
+                        onClick={onDateClick ? () => onDateClick(day.date) : undefined}
+                      />
+                    )
                   ))}
                 </div>
               ))}
@@ -192,9 +279,9 @@ export const PracticeHeatmap = memo(function PracticeHeatmap({ practiceData, onD
               <span className="text-xs text-muted-foreground">Less</span>
               <div className="flex gap-[2px]">
                 <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-muted" />
-                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-200" />
-                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-400" />
-                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-600" />
+                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-200 dark:bg-emerald-900" />
+                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-400 dark:bg-emerald-700" />
+                <div className="h-[10px] w-[10px] md:h-[12px] md:w-[12px] rounded-[2px] bg-emerald-600 dark:bg-emerald-500" />
               </div>
               <span className="text-xs text-muted-foreground">More</span>
             </div>

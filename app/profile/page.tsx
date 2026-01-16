@@ -10,7 +10,7 @@ export default function ProfilePage() {
   const user = useQuery(api.queries.getCurrentUser)
   const stats = useQuery(api.queries.getUserStats)
   const badges = useQuery(api.queries.getBadges)
-  const practiceHistory = useQuery(api.queries.getPracticeHistory, { days: 365 })
+  const practiceHistory = useQuery(api.queries.getPracticeHistory, { days: 730 }) // 2 years of data
 
   const isLoading = user === undefined || stats === undefined || badges === undefined
 
