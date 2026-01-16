@@ -9,6 +9,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mindshift-zeta.vercel.app"),
   title: "Mindshift - Quit Negative Thinking",
   description:
     "Transform negative self-talk into empowering affirmations through AI-powered practice.",
