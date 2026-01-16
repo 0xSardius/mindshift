@@ -21,7 +21,7 @@ interface PracticeSessionProps {
 }
 
 const TOTAL_REPS = 10
-const XP_PER_REP = 10
+const XP_PER_REP = 1.5 // Matches backend calculation
 
 function determineCelebrationType(
   oldLevel: number,
@@ -62,8 +62,32 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSavingPartial, setIsSavingPartial] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Save partial progress when leaving with some reps completed
+  const handleSaveAndExit = useCallback(async () => {
+    if (completedReps === 0 || isSavingPartial) {
+      onBack()
+      return
+    }
+
+    setIsSavingPartial(true)
+    try {
+      await completePractice({
+        affirmationId,
+        repetitions: completedReps,
+        durationSeconds: elapsedSeconds,
+      })
+      onBack()
+    } catch (error) {
+      console.error("Failed to save partial progress:", error)
+      onBack() // Still exit even if save fails
+    } finally {
+      setIsSavingPartial(false)
+    }
+  }, [affirmationId, completedReps, completePractice, elapsedSeconds, isSavingPartial, onBack])
 
   useEffect(() => {
     if (!isPaused && !showCelebration) {
@@ -178,7 +202,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} aria-label="Go back">
+          <Button variant="ghost" size="icon" onClick={handleSaveAndExit} disabled={isSavingPartial} aria-label="Go back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold">Practice Session</h1>
@@ -268,8 +292,8 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
               </>
             )}
           </Button>
-          <Button variant="ghost" onClick={onBack} className="text-muted-foreground">
-            Skip
+          <Button variant="ghost" onClick={handleSaveAndExit} disabled={isSavingPartial} className="text-muted-foreground">
+            {isSavingPartial ? "Saving..." : completedReps > 0 ? "Save & Exit" : "Skip"}
           </Button>
         </div>
       </main>
