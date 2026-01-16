@@ -7,6 +7,7 @@ import type { Tier } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { motion, useSpring, useTransform } from "framer-motion"
 import { useEffect } from "react"
+import { calculateXPForNextLevel } from "@/convex/lib/xpCalculator"
 
 export const tierConfig: Record<
   Tier,
@@ -65,11 +66,6 @@ function getTierFromLevel(level: number): Tier {
   return "NOVICE"
 }
 
-function getXPForLevel(level: number): { currentXP: number; xpToNextLevel: number } {
-  const baseXP = 100
-  const xpToNextLevel = baseXP + level * 50
-  return { currentXP: Math.floor(xpToNextLevel * 0.6), xpToNextLevel }
-}
 
 function getNextTier(currentTier: Tier): Tier | null {
   const currentIndex = tierOrder.indexOf(currentTier)
@@ -112,8 +108,10 @@ interface TierCardProps {
 export function TierCard({ level, totalXP, currentStreak, compact = false }: TierCardProps) {
   const tier = getTierFromLevel(level)
   const tierInfo = tierConfig[tier]
-  const { currentXP, xpToNextLevel } = getXPForLevel(level)
-  const progressPercent = (currentXP / xpToNextLevel) * 100
+  const { xpProgress, xpRequired } = calculateXPForNextLevel(totalXP, level)
+  const currentXP = xpProgress
+  const xpToNextLevel = xpRequired
+  const progressPercent = xpRequired > 0 ? (xpProgress / xpRequired) * 100 : 100
   const tierProgress = getLevelsToNextTier(level, tier)
   const nextTier = getNextTier(tier)
 
