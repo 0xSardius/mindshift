@@ -106,14 +106,27 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
+  // Normalize text for comparison (handle smart quotes, apostrophes, etc.)
+  const normalizeText = (text: string) => {
+    return text
+      .trim()
+      .toLowerCase()
+      // Normalize smart quotes to straight quotes
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // Single quotes
+      .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // Double quotes
+      // Normalize dashes
+      .replace(/[\u2013\u2014]/g, "-")
+      // Normalize ellipsis
+      .replace(/\u2026/g, "...")
+      // Normalize multiple spaces to single space
+      .replace(/\s+/g, " ")
+  }
+
   const handleInputChange = useCallback(
     (value: string) => {
       setCurrentInput(value)
 
-      if (value.trim().toLowerCase() === affirmationText.trim().toLowerCase()) {
-        const newReps = completedReps + 1
-        const newXP = xpEarned + XP_PER_REP
-
+      if (normalizeText(value) === normalizeText(affirmationText)) {
         if (navigator.vibrate) {
           navigator.vibrate(50)
         }
@@ -121,16 +134,26 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
         setShowFlash(true)
         setTimeout(() => setShowFlash(false), 300)
 
-        setCompletedReps(newReps)
-        setXpEarned(newXP)
+        // Calculate new rep count (using current value + 1)
+        const newRepCount = completedReps + 1
+
+        // Use functional updates to avoid stale closure issues
+        setCompletedReps((prev) => {
+          const newReps = prev + 1
+
+          // Update announcement
+          const announcement = document.getElementById("sr-announcement")
+          if (announcement) {
+            announcement.textContent = `${newReps} of ${TOTAL_REPS} completed.`
+          }
+
+          return newReps
+        })
+        setXpEarned((prev) => prev + XP_PER_REP)
         setCurrentInput("")
 
-        const announcement = document.getElementById("sr-announcement")
-        if (announcement) {
-          announcement.textContent = `${newReps} of ${TOTAL_REPS} completed. ${newXP} XP earned.`
-        }
-
-        if (newReps >= TOTAL_REPS) {
+        // Check completion
+        if (newRepCount >= TOTAL_REPS) {
           setTimeout(async () => {
             if (isSubmitting) return
             setIsSubmitting(true)
@@ -172,7 +195,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
               // Still show celebration with local data on error
               setCelebrationData({
                 type: "standard",
-                xpEarned: newXP,
+                xpEarned: TOTAL_REPS * XP_PER_REP,
                 newLevel: 1,
                 oldLevel: 1,
                 newTier: "NOVICE",
@@ -190,7 +213,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
         }
       }
     },
-    [affirmationId, affirmationText, completedReps, completePractice, elapsedSeconds, isSubmitting, xpEarned],
+    [affirmationId, affirmationText, completedReps, completePractice, elapsedSeconds, isSubmitting],
   )
 
   const progressPercent = (completedReps / TOTAL_REPS) * 100
