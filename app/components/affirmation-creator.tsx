@@ -28,6 +28,28 @@ export function AffirmationCreator() {
   const [customAffirmation, setCustomAffirmation] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+
+  // Loading messages for AI generation
+  const loadingMessages = [
+    "Analyzing your thought patterns...",
+    "Identifying cognitive distortions...",
+    "Crafting personalized affirmations...",
+    "Applying CBT principles...",
+    "Almost there...",
+  ]
+
+  // Rotate loading messages
+  useEffect(() => {
+    if (phase !== "loading") {
+      setLoadingMessageIndex(0)
+      return
+    }
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [phase, loadingMessages.length])
 
   const characterCount = negativeThought.length
   const isInputValid = characterCount >= 10
@@ -187,24 +209,7 @@ export function AffirmationCreator() {
     )
   }
 
-  // Loading state with rotating messages
-  const loadingMessages = [
-    "Analyzing your thought patterns...",
-    "Identifying cognitive distortions...",
-    "Crafting personalized affirmations...",
-    "Applying CBT principles...",
-    "Almost there...",
-  ]
-  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
-
-  useEffect(() => {
-    if (phase !== "loading") return
-    const interval = setInterval(() => {
-      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [phase, loadingMessages.length])
-
+  // Loading state
   if (phase === "loading") {
     return (
       <div className="flex flex-col items-center justify-center gap-6 px-4 py-16 mx-auto max-w-[600px]">
