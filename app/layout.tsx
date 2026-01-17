@@ -60,6 +60,13 @@ export const metadata: Metadata = {
       "Transform negative self-talk into empowering affirmations through AI-powered practice.",
     images: ["/og-image.png"],
   },
+  other: {
+    "fc:frame": "vNext",
+    "fc:frame:image": "https://mindshift-zeta.vercel.app/og-image.png",
+    "fc:frame:button:1": "Try Mindshift",
+    "fc:frame:button:1:action": "link",
+    "fc:frame:button:1:target": "https://mindshift-zeta.vercel.app",
+  },
 };
 
 export const viewport: Viewport = {
