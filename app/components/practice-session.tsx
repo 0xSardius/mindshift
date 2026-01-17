@@ -161,7 +161,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
             try {
               const result = await completePractice({
                 affirmationId,
-                repetitions: newReps,
+                repetitions: newRepCount,
                 durationSeconds: elapsedSeconds,
               })
 
