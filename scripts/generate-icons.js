@@ -89,21 +89,20 @@ async function generateOGImage() {
   const usePng = fs.existsSync(inputPng);
   const outputPath = path.join(outputDir, 'og-image.png');
 
-  // Create OG image with gradient background and centered icon
-  const iconSize = 200;
+  // Create OG image with neutral background and centered icon
+  const iconSize = 180;
 
-  // Create gradient background SVG
+  // Colors matching the app theme
+  const bgColor = '#f8f9fc'; // App background color
+  const textColor = '#0f172a'; // Slate 900 for title
+  const subtextColor = '#64748b'; // Slate 500 for subtitle
+
+  // Create background SVG with neutral colors and sans-serif font
   const bgSvg = `
     <svg width="${ogSize.width}" height="${ogSize.height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" style="stop-color:#7c3aed"/>
-          <stop offset="100%" style="stop-color:#a855f7"/>
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#bg)"/>
-      <text x="50%" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="white">Mindshift</text>
-      <text x="50%" y="490" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="rgba(255,255,255,0.85)">Quit Negative Thinking</text>
+      <rect width="100%" height="100%" fill="${bgColor}"/>
+      <text x="50%" y="420" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="64" font-weight="600" fill="${textColor}">Mindshift</text>
+      <text x="50%" y="480" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="28" font-weight="400" fill="${subtextColor}">Quit Negative Thinking</text>
     </svg>
   `;
 

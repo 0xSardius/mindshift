@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -187,15 +187,50 @@ export function AffirmationCreator() {
     )
   }
 
-  // Loading state
+  // Loading state with rotating messages
+  const loadingMessages = [
+    "Analyzing your thought patterns...",
+    "Identifying cognitive distortions...",
+    "Crafting personalized affirmations...",
+    "Applying CBT principles...",
+    "Almost there...",
+  ]
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+
+  useEffect(() => {
+    if (phase !== "loading") return
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [phase, loadingMessages.length])
+
   if (phase === "loading") {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 px-4 py-16 mx-auto max-w-[600px]">
+      <div className="flex flex-col items-center justify-center gap-6 px-4 py-16 mx-auto max-w-[600px]">
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-          <Loader2 className="relative w-12 h-12 text-primary animate-spin" />
+          <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" style={{ animationDelay: "0.5s" }} />
+          <Loader2 className="relative w-16 h-16 text-primary animate-spin" />
         </div>
-        <p className="text-lg font-medium text-foreground animate-pulse">Creating your personalized affirmations...</p>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-lg font-medium text-foreground transition-opacity duration-300">
+            {loadingMessages[loadingMessageIndex]}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            This usually takes 5-10 seconds
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                i <= loadingMessageIndex ? "bg-primary" : "bg-muted"
+              }`}
+            />
+          ))}
+        </div>
       </div>
     )
   }
