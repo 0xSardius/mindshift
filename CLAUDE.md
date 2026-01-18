@@ -157,13 +157,14 @@ https://mindshift-zeta.vercel.app/
 | Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
 | Save multiple affirmations | ❌ Backlog | Allow users to save multiple AI-generated affirmations per transformation |
 
-### UX Improvements (Backlog)
+### UX Improvements
 
-| Improvement | Notes |
-|-------------|-------|
-| AI generation loading indicator | Sonnet 4.5 takes longer to generate; add visual feedback (skeleton, spinner, or streaming) |
-| Transformation result caching | Consider caching AI results briefly to avoid re-generation on back navigation |
-| Activity heatmap | GitHub-style practice visualization (spec in `mindshift-practice-heatmap.md`) |
+| Improvement | Status | Notes |
+|-------------|--------|-------|
+| AI generation loading indicator | ✅ Done | Rotating messages with progress dots, "5-10 seconds" estimate |
+| Activity heatmap | ✅ Done | GitHub-style practice visualization with year navigation |
+| Mobile keyboard smart quote handling | ✅ Done | `normalizeText()` converts curly quotes/apostrophes to straight quotes |
+| Transformation result caching | ❌ Backlog | Consider caching AI results briefly to avoid re-generation on back navigation |
 
 ### Integrations (Backlog)
 
