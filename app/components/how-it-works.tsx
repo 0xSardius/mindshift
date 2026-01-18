@@ -334,7 +334,7 @@ export function HowItWorks() {
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
-                    <span>5 transformations/month</span>
+                    <span>10 AI transformations (lifetime)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
@@ -355,7 +355,7 @@ export function HowItWorks() {
               <Badge className="absolute right-4 top-4">Popular</Badge>
               <CardHeader>
                 <CardTitle>
-                  Go Pro <span className="text-xl font-normal text-muted-foreground">$4.99/mo</span>
+                  Go Pro <span className="text-xl font-normal text-muted-foreground">$9.99/mo</span>
                 </CardTitle>
                 <CardDescription>Unlock your full potential</CardDescription>
               </CardHeader>

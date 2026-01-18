@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Plus, Sparkles, Brain, Trophy, ArrowRight, Check } from "lucide-react";
+import { TransformationDemo } from "@/app/components/transformation-demo";
 import Link from "next/link";
 import { TierCard } from "@/components/tier-card";
 import { QuickPractice } from "@/components/quick-practice";
@@ -147,22 +148,10 @@ function UnauthenticatedHome() {
         </p>
       </div>
 
-      {/* Transformation Example */}
-      <Card className="border-0 shadow-lg mb-8 overflow-hidden">
-        <CardContent className="p-0">
-          <div className="bg-red-50 dark:bg-red-950/30 p-4 border-b border-red-100 dark:border-red-900/50">
-            <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Your negative thought:</p>
-            <p className="text-foreground italic">"I'm not good enough for this job"</p>
-          </div>
-          <div className="flex items-center justify-center py-2 bg-muted/50">
-            <ArrowRight className="h-5 w-5 text-primary" />
-          </div>
-          <div className="bg-green-50 dark:bg-green-950/30 p-4">
-            <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">AI-transformed affirmation:</p>
-            <p className="text-foreground font-medium">"I am capable and growing every day. My skills and experience make me valuable."</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Transformation Demo */}
+      <div className="mb-8">
+        <TransformationDemo />
+      </div>
 
       {/* Benefits */}
       <div className="space-y-4 mb-8">
