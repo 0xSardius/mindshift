@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner"
 import { TierCard } from "./tier-card"
 import { PracticeHeatmap } from "./practice-heatmap"
+import { PatternInsights } from "./pattern-insights"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { BADGE_TYPES } from "@/convex/lib/badgeTypes"
@@ -73,11 +74,27 @@ interface PracticeDay {
   count: number
 }
 
+interface PatternData {
+  topDistortions: Array<{
+    type: string
+    count: number
+    percentage: number
+  }>
+  topThemes: Array<{
+    theme: string
+    count: number
+    percentage: number
+  }>
+  totalTransformations: number
+  isPro: boolean
+}
+
 interface ProfileProps {
   user: ConvexUser
   stats: ConvexStats
   badges: ConvexBadge[]
   practiceData?: PracticeDay[]
+  patterns?: PatternData | null
 }
 
 function getTierName(level: number): string {
@@ -88,7 +105,7 @@ function getTierName(level: number): string {
   return "MASTER"
 }
 
-export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps) {
+export function Profile({ user, stats, badges, practiceData = [], patterns }: ProfileProps) {
   const { signOut, openUserProfile } = useClerk()
   const { theme, setTheme } = useTheme()
   const updateSettings = useMutation(api.mutations.updateUserSettings)
@@ -284,6 +301,9 @@ export function Profile({ user, stats, badges, practiceData = [] }: ProfileProps
       {practiceData.length > 0 && (
         <PracticeHeatmap practiceData={practiceData} onDateClick={(date) => console.log("Clicked date:", date)} />
       )}
+
+      {/* Pattern Insights (Pro Feature) */}
+      <PatternInsights patterns={patterns || null} />
 
       {/* Badges Section */}
       <div className="space-y-3">

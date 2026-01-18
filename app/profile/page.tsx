@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const stats = useQuery(api.queries.getUserStats)
   const badges = useQuery(api.queries.getBadges)
   const practiceHistory = useQuery(api.queries.getPracticeHistory, { days: 730 }) // 2 years of data
+  const patterns = useQuery(api.queries.getUserPatterns)
 
   const isLoading = user === undefined || stats === undefined || badges === undefined
 
@@ -38,6 +39,7 @@ export default function ProfilePage() {
           stats={stats}
           badges={badges || []}
           practiceData={practiceHistory || []}
+          patterns={patterns}
         />
       </div>
       <BottomNav />
