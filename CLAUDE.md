@@ -153,7 +153,7 @@ https://mindshift-zeta.vercel.app/
 | Streak Shield | ✅ Done | Logic in `completePractice` - allows 1 missed day per week for Pro users |
 | Export affirmations | ✅ Done | CSV export button in Library for Pro users |
 | Dark mode (Pro-gated) | ✅ Done | Gated in Profile settings with lock icon |
-| AI Pattern Learning | ❌ Backlog | See spec below - learns recurring themes, suggests meta-affirmations |
+| AI Pattern Learning | 🟡 In Progress | Phase 1-2 done (query + UI), Phase 3-4 pending (context injection + meta-affirmations) |
 | Advanced analytics | ❌ Backlog | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
 | Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
 | Save multiple affirmations | ❌ Backlog | Allow users to save multiple AI-generated affirmations per transformation |
@@ -207,38 +207,21 @@ originalThought: string         // The raw negative input
 
 ### Implementation Phases
 
-#### Phase 1: Pattern Analysis Query (Small effort)
-Add `convex/queries.ts`:
-```typescript
-export const getUserPatterns = query({
-  args: {},
-  handler: async (ctx) => {
-    // Get all user's affirmations
-    // Aggregate cognitiveDistortions counts
-    // Aggregate themeCategory counts
-    // Return sorted by frequency
-    return {
-      topDistortions: [
-        { type: "catastrophizing", count: 12, percentage: 40 },
-        { type: "all-or-nothing", count: 9, percentage: 30 },
-      ],
-      topThemes: [
-        { theme: "work", count: 15, percentage: 50 },
-        { theme: "self-worth", count: 8, percentage: 27 },
-      ],
-      totalTransformations: 30,
-    }
-  }
-})
-```
+#### Phase 1: Pattern Analysis Query ✅ COMPLETE
+`convex/queries.ts` - `getUserPatterns` query aggregates:
+- Top 5 cognitive distortions with counts and percentages
+- Top 5 themes with counts and percentages
+- Total transformation count
+- User's Pro status
 
-#### Phase 2: Insights UI (Medium effort)
-Add to Profile page (Pro-gated):
-- "Your Patterns" card showing top 3 cognitive distortions with progress bars
-- "Your Themes" card showing category breakdown
-- Trend over time (are you improving on catastrophizing?)
+#### Phase 2: Insights UI ✅ COMPLETE
+`app/components/pattern-insights.tsx` - PatternInsights component:
+- Color-coded progress bars for cognitive distortions
+- Theme chips with emoji icons
+- Three states: empty, free (blurred teaser), Pro (full view)
+- Integrated into Profile page after Practice Heatmap
 
-#### Phase 3: Context-Aware Generation (Medium effort)
+#### Phase 3: Context-Aware Generation (Medium effort) - TODO
 Modify `/api/generate/route.ts`:
 ```typescript
 // For Pro users, fetch their pattern history
