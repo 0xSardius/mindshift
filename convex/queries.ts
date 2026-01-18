@@ -443,3 +443,91 @@ export const getTransformationCount = query({
     return { count, limit, remaining, unlimited: false };
   },
 });
+
+// Get user's cognitive patterns (for AI Pattern Learning - Pro feature)
+export const getUserPatterns = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      return null;
+    }
+
+    // Get all affirmations for this user
+    const affirmations = await ctx.db
+      .query("affirmations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const totalTransformations = affirmations.length;
+
+    if (totalTransformations === 0) {
+      return {
+        topDistortions: [],
+        topThemes: [],
+        totalTransformations: 0,
+        isPro: user.tier === "pro" || user.tier === "elite",
+      };
+    }
+
+    // Aggregate cognitive distortions
+    const distortionCounts: Record<string, number> = {};
+    let totalDistortions = 0;
+
+    for (const affirmation of affirmations) {
+      if (affirmation.cognitiveDistortions) {
+        for (const distortion of affirmation.cognitiveDistortions) {
+          distortionCounts[distortion] = (distortionCounts[distortion] || 0) + 1;
+          totalDistortions++;
+        }
+      }
+    }
+
+    // Aggregate themes
+    const themeCounts: Record<string, number> = {};
+    let totalThemes = 0;
+
+    for (const affirmation of affirmations) {
+      if (affirmation.themeCategory) {
+        themeCounts[affirmation.themeCategory] = (themeCounts[affirmation.themeCategory] || 0) + 1;
+        totalThemes++;
+      }
+    }
+
+    // Sort and format distortions
+    const topDistortions = Object.entries(distortionCounts)
+      .map(([type, count]) => ({
+        type,
+        count,
+        percentage: totalDistortions > 0 ? Math.round((count / totalDistortions) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Sort and format themes
+    const topThemes = Object.entries(themeCounts)
+      .map(([theme, count]) => ({
+        theme,
+        count,
+        percentage: totalThemes > 0 ? Math.round((count / totalThemes) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      topDistortions,
+      topThemes,
+      totalTransformations,
+      isPro: user.tier === "pro" || user.tier === "elite",
+    };
+  },
+});
