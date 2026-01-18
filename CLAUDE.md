@@ -153,6 +153,7 @@ https://mindshift-zeta.vercel.app/
 | Streak Shield | ✅ Done | Logic in `completePractice` - allows 1 missed day per week for Pro users |
 | Export affirmations | ✅ Done | CSV export button in Library for Pro users |
 | Dark mode (Pro-gated) | ✅ Done | Gated in Profile settings with lock icon |
+| AI Pattern Learning | ❌ Backlog | See spec below - learns recurring themes, suggests meta-affirmations |
 | Advanced analytics | ❌ Backlog | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
 | Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
 | Save multiple affirmations | ❌ Backlog | Allow users to save multiple AI-generated affirmations per transformation |
@@ -182,3 +183,113 @@ To regenerate all icons (PWA, favicon, OG image):
 ```bash
 node scripts/generate-icons.js
 ```
+
+---
+
+## Feature Spec: AI Pattern Learning (Pro)
+
+### Overview
+AI analyzes user's history of negative thoughts to identify recurring cognitive patterns and themes, then provides personalized insights and "meta-affirmations" that address root causes rather than individual symptoms.
+
+### User Value
+- "The app understands ME" - not generic advice
+- Attack root causes, not just surface thoughts
+- See blind spots in thinking patterns
+- Accelerate progress by addressing core issues
+
+### Data Already Available
+```typescript
+// On each affirmation record:
+cognitiveDistortions: string[]  // e.g., ["catastrophizing", "all-or-nothing"]
+themeCategory: string           // e.g., "work", "relationships", "self-worth"
+originalThought: string         // The raw negative input
+```
+
+### Implementation Phases
+
+#### Phase 1: Pattern Analysis Query (Small effort)
+Add `convex/queries.ts`:
+```typescript
+export const getUserPatterns = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all user's affirmations
+    // Aggregate cognitiveDistortions counts
+    // Aggregate themeCategory counts
+    // Return sorted by frequency
+    return {
+      topDistortions: [
+        { type: "catastrophizing", count: 12, percentage: 40 },
+        { type: "all-or-nothing", count: 9, percentage: 30 },
+      ],
+      topThemes: [
+        { theme: "work", count: 15, percentage: 50 },
+        { theme: "self-worth", count: 8, percentage: 27 },
+      ],
+      totalTransformations: 30,
+    }
+  }
+})
+```
+
+#### Phase 2: Insights UI (Medium effort)
+Add to Profile page (Pro-gated):
+- "Your Patterns" card showing top 3 cognitive distortions with progress bars
+- "Your Themes" card showing category breakdown
+- Trend over time (are you improving on catastrophizing?)
+
+#### Phase 3: Context-Aware Generation (Medium effort)
+Modify `/api/generate/route.ts`:
+```typescript
+// For Pro users, fetch their pattern history
+const patterns = await convex.query(api.queries.getUserPatterns)
+
+// Inject into AI prompt
+const systemPrompt = `
+${BASE_PROMPT}
+
+USER CONTEXT (use to personalize):
+- This user frequently struggles with: ${patterns.topDistortions.map(d => d.type).join(', ')}
+- Common themes: ${patterns.topThemes.map(t => t.theme).join(', ')}
+- Consider addressing root patterns, not just this specific thought.
+`
+```
+
+#### Phase 4: Meta-Affirmations (Larger effort)
+New feature: "Deep Work" or "Root Patterns"
+- AI analyzes all thoughts and generates 1-3 meta-affirmations
+- Example: "You've logged 12 thoughts about work inadequacy. Here's a root affirmation: 'I am qualified and capable. My contributions have value regardless of others' opinions.'"
+- Could be weekly email (Resend) or in-app section
+
+### UI Mockup Ideas
+
+**Profile > Insights (Pro)**
+```
+┌─────────────────────────────────────┐
+│ Your Thought Patterns               │
+├─────────────────────────────────────┤
+│ Based on 30 transformations         │
+│                                     │
+│ Top Cognitive Distortions:          │
+│ ██████████░░░░ Catastrophizing 40%  │
+│ ███████░░░░░░░ All-or-nothing  30%  │
+│ ████░░░░░░░░░░ Mind-reading    15%  │
+│                                     │
+│ Common Themes:                      │
+│ 🏢 Work (50%)                       │
+│ 💪 Self-worth (27%)                 │
+│ 👥 Relationships (23%)              │
+│                                     │
+│ [Generate Meta-Affirmation] (Pro)   │
+└─────────────────────────────────────┘
+```
+
+### Gating
+- Pattern viewing: Pro only (Free users see teaser with upgrade CTA)
+- Context-aware generation: Pro only (silently enhanced)
+- Meta-affirmations: Pro only
+
+### Success Metrics
+- Pro conversion lift from Insights feature
+- Engagement with meta-affirmations (practice rate)
+- User feedback on personalization quality
