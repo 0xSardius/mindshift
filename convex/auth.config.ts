@@ -1,8 +1,8 @@
 export default {
   providers: [
     {
-      // Clerk domain from your publishable key
-      domain: "https://careful-satyr-6.clerk.accounts.dev",
+      // Clerk production domain
+      domain: "https://clerk.mindshiftai.xyz",
       applicationID: "convex",
     },
   ],
