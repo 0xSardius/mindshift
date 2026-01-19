@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import {
   calculateLevel,
-  calculatePracticeXP,
+  calculatePracticeXPWithBreakdown,
   getStreakMultiplier,
   getLevelTier,
   getTierName,
@@ -223,14 +223,15 @@ export const completePractice = mutation({
       }
     }
 
-    // Calculate XP
-    const xpEarned = calculatePracticeXP({
+    // Calculate XP with breakdown
+    const xpBreakdown = calculatePracticeXPWithBreakdown({
       repetitions: args.repetitions,
       streak: newStreak,
       isFirstToday,
       isNewAffirmation,
       isMorningPractice,
     });
+    const xpEarned = xpBreakdown.total;
 
     const oldLevel = user.level;
     const newTotalXP = user.totalXP + xpEarned;
@@ -325,6 +326,14 @@ export const completePractice = mutation({
 
     return {
       xpEarned,
+      xpBreakdown: {
+        base: xpBreakdown.base,
+        firstToday: xpBreakdown.firstToday,
+        fullSession: xpBreakdown.fullSession,
+        newAffirmation: xpBreakdown.newAffirmation,
+        morningBonus: xpBreakdown.morningBonus,
+        streakMultiplier: xpBreakdown.streakMultiplier,
+      },
       totalXP: newTotalXP,
       oldLevel,
       newLevel,

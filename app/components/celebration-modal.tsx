@@ -145,6 +145,53 @@ export function CelebrationModal({ open, onOpenChange, data, onPracticeAnother, 
             <AnimatedXP value={data.xpEarned} />
           </motion.div>
 
+          {/* XP Breakdown */}
+          {data.xpBreakdown && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="rounded-lg bg-muted/50 p-3 text-sm"
+            >
+              <div className="space-y-1 text-left text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Practice ({Math.round(data.xpBreakdown.base / 1.5)} reps)</span>
+                  <span className="font-medium text-foreground">+{data.xpBreakdown.base}</span>
+                </div>
+                {data.xpBreakdown.firstToday > 0 && (
+                  <div className="flex justify-between">
+                    <span>First today bonus</span>
+                    <span className="font-medium text-foreground">+{data.xpBreakdown.firstToday}</span>
+                  </div>
+                )}
+                {data.xpBreakdown.fullSession > 0 && (
+                  <div className="flex justify-between">
+                    <span>Completion bonus</span>
+                    <span className="font-medium text-foreground">+{data.xpBreakdown.fullSession}</span>
+                  </div>
+                )}
+                {data.xpBreakdown.newAffirmation > 0 && (
+                  <div className="flex justify-between">
+                    <span>New affirmation bonus</span>
+                    <span className="font-medium text-foreground">+{data.xpBreakdown.newAffirmation}</span>
+                  </div>
+                )}
+                {data.xpBreakdown.morningBonus > 0 && (
+                  <div className="flex justify-between">
+                    <span>Morning practice bonus</span>
+                    <span className="font-medium text-foreground">+{data.xpBreakdown.morningBonus}</span>
+                  </div>
+                )}
+                {data.xpBreakdown.streakMultiplier > 1 && (
+                  <div className="flex justify-between border-t border-border pt-1 mt-1">
+                    <span>Streak multiplier</span>
+                    <span className="font-medium text-primary">×{data.xpBreakdown.streakMultiplier}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {/* Streak status */}
           {data.streakMaintained && (
             <motion.div

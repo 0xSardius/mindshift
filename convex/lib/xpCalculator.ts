@@ -189,6 +189,17 @@ export function calculateXPForNextLevel(
   return { xpToNext, xpProgress, xpRequired };
 }
 
+// XP breakdown for transparency
+export interface XPBreakdown {
+  base: number;
+  firstToday: number;
+  fullSession: number;
+  newAffirmation: number;
+  morningBonus: number;
+  streakMultiplier: number;
+  total: number;
+}
+
 // Calculate XP earned for a practice session (proportional to reps)
 export function calculatePracticeXP(params: {
   repetitions: number;
@@ -197,41 +208,56 @@ export function calculatePracticeXP(params: {
   isNewAffirmation: boolean;
   isMorningPractice: boolean;
 }): number {
+  return calculatePracticeXPWithBreakdown(params).total;
+}
+
+// Calculate XP with detailed breakdown for display
+export function calculatePracticeXPWithBreakdown(params: {
+  repetitions: number;
+  streak: number;
+  isFirstToday: boolean;
+  isNewAffirmation: boolean;
+  isMorningPractice: boolean;
+}): XPBreakdown {
   const { repetitions, streak, isFirstToday, isNewAffirmation, isMorningPractice } = params;
 
   // Base XP is proportional to reps (1.5 XP per rep)
-  let baseXP = repetitions * XP_PER_REP;
+  const base = repetitions * XP_PER_REP;
 
   // Bonus for first practice today
-  if (isFirstToday) {
-    baseXP += XP_FIRST_TODAY;
-  }
+  const firstToday = isFirstToday ? XP_FIRST_TODAY : 0;
 
-  // Bonus for completing full session (10 reps)
+  // Bonus for completing full session (10 reps) + extra for 20
+  let fullSession = 0;
   if (repetitions >= 10) {
-    baseXP += XP_FULL_SESSION_10;
+    fullSession += XP_FULL_SESSION_10;
   }
-
-  // Extra bonus for 20 reps
   if (repetitions >= 20) {
-    baseXP += XP_FULL_SESSION_20;
+    fullSession += XP_FULL_SESSION_20;
   }
 
   // Bonus for new affirmation
-  if (isNewAffirmation) {
-    baseXP += XP_NEW_AFFIRMATION;
-  }
+  const newAffirmation = isNewAffirmation ? XP_NEW_AFFIRMATION : 0;
 
   // Bonus for morning practice
-  if (isMorningPractice) {
-    baseXP += XP_MORNING_PRACTICE;
-  }
+  const morningBonus = isMorningPractice ? XP_MORNING_PRACTICE : 0;
+
+  // Calculate subtotal before multiplier
+  const subtotal = base + firstToday + fullSession + newAffirmation + morningBonus;
 
   // Apply streak multiplier
-  const multiplier = getStreakMultiplier(streak);
-  const totalXP = Math.round(baseXP * multiplier);
+  const streakMultiplier = getStreakMultiplier(streak);
+  const total = Math.round(subtotal * streakMultiplier);
 
-  return totalXP;
+  return {
+    base,
+    firstToday,
+    fullSession,
+    newAffirmation,
+    morningBonus,
+    streakMultiplier,
+    total,
+  };
 }
 
 // Determine celebration type based on level changes

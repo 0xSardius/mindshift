@@ -104,9 +104,19 @@ export interface UserStats {
 
 export type CelebrationType = "standard" | "levelUp" | "tierChange" | "milestone"
 
+export interface XPBreakdown {
+  base: number
+  firstToday: number
+  fullSession: number
+  newAffirmation: number
+  morningBonus: number
+  streakMultiplier: number
+}
+
 export interface CelebrationData {
   type: CelebrationType
   xpEarned: number
+  xpBreakdown?: XPBreakdown
   newLevel?: number
   oldLevel?: number
   newTier?: Tier

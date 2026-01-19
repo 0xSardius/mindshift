@@ -180,6 +180,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
               setCelebrationData({
                 type: celebrationType,
                 xpEarned: result.xpEarned,
+                xpBreakdown: result.xpBreakdown,
                 newLevel: result.newLevel,
                 oldLevel: result.oldLevel,
                 newTier: result.newTier,
