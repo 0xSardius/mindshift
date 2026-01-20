@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mindshift-zeta.vercel.app"),
+  metadataBase: new URL("https://mindshiftai.xyz"),
   title: "Mindshift - Quit Negative Thinking",
   description:
     "Transform negative self-talk into empowering affirmations through AI-powered practice.",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
       "Transform negative self-talk into empowering affirmations through AI-powered practice.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.png?v=2",
         width: 1200,
         height: 630,
         alt: "Mindshift - Quit Negative Thinking",
@@ -58,14 +58,14 @@ export const metadata: Metadata = {
     title: "Mindshift - Quit Negative Thinking",
     description:
       "Transform negative self-talk into empowering affirmations through AI-powered practice.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://mindshift-zeta.vercel.app/og-image.png",
+    "fc:frame:image": "https://mindshiftai.xyz/og-image.png?v=2",
     "fc:frame:button:1": "Try Mindshift",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://mindshift-zeta.vercel.app",
+    "fc:frame:button:1:target": "https://mindshiftai.xyz",
   },
 };
 
