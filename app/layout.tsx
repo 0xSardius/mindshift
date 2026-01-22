@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://mindshiftai.xyz/opengraph-image",
+    "fc:frame:image": "https://mindshiftai.xyz/social-card.png",
     "fc:frame:button:1": "Try Mindshift",
     "fc:frame:button:1:action": "link",
     "fc:frame:button:1:target": "https://mindshiftai.xyz",
