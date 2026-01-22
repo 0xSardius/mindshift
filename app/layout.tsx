@@ -43,14 +43,6 @@ export const metadata: Metadata = {
     title: "Mindshift - Quit Negative Thinking",
     description:
       "Transform negative self-talk into empowering affirmations through AI-powered practice.",
-    images: [
-      {
-        url: "/social-card.png",
-        width: 1200,
-        height: 630,
-        alt: "Mindshift - Quit Negative Thinking",
-      },
-    ],
     type: "website",
   },
   twitter: {
@@ -58,11 +50,10 @@ export const metadata: Metadata = {
     title: "Mindshift - Quit Negative Thinking",
     description:
       "Transform negative self-talk into empowering affirmations through AI-powered practice.",
-    images: ["/social-card.png"],
   },
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://mindshiftai.xyz/social-card.png",
+    "fc:frame:image": "https://mindshiftai.xyz/opengraph-image",
     "fc:frame:button:1": "Try Mindshift",
     "fc:frame:button:1:action": "link",
     "fc:frame:button:1:target": "https://mindshiftai.xyz",
