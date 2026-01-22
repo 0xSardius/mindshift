@@ -106,7 +106,7 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Normalize text for comparison (handle smart quotes, apostrophes, etc.)
+  // Normalize text for comparison (handle smart quotes, apostrophes, punctuation, etc.)
   const normalizeText = (text: string) => {
     return text
       .trim()
@@ -120,6 +120,8 @@ export function PracticeSession({ affirmationId, affirmationText, onComplete, on
       .replace(/\u2026/g, "...")
       // Normalize multiple spaces to single space
       .replace(/\s+/g, " ")
+      // Remove trailing punctuation (periods, exclamation, question marks)
+      .replace(/[.!?]+$/, "")
   }
 
   const handleInputChange = useCallback(

@@ -124,23 +124,7 @@ export function Profile({ user, stats, badges, practiceData = [], patterns }: Pr
   const isPro = user.tier === "pro" || user.tier === "elite"
   const isDarkMode = theme === "dark"
 
-  // Force light mode for non-Pro users
-  useEffect(() => {
-    if (!isPro && theme === "dark") {
-      setTheme("light")
-    }
-  }, [isPro, theme, setTheme])
-
   const handleDarkModeToggle = (checked: boolean) => {
-    if (!isPro) {
-      toast.error("Dark mode is a Pro feature", {
-        action: {
-          label: "Upgrade",
-          onClick: () => window.location.href = "/pricing"
-        }
-      })
-      return
-    }
     setTheme(checked ? "dark" : "light")
   }
 
@@ -342,22 +326,15 @@ export function Profile({ user, stats, badges, practiceData = [], patterns }: Pr
         <h2 className="mb-3 text-lg font-semibold text-foreground">Settings</h2>
         <Card className="border-0 shadow-sm">
           <CardContent className="divide-y divide-border p-0">
-            {/* Dark Mode (Pro Feature) */}
+            {/* Dark Mode */}
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
                 <Moon className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground">Dark mode</p>
-                    {!isPro && <Lock className="h-3 w-3 text-muted-foreground" />}
-                  </div>
-                  {!isPro && <p className="text-xs text-muted-foreground">Pro feature</p>}
-                </div>
+                <p className="font-medium text-foreground">Dark mode</p>
               </div>
               <Switch
-                checked={isPro && isDarkMode}
+                checked={isDarkMode}
                 onCheckedChange={handleDarkModeToggle}
-                disabled={!isPro}
               />
             </div>
             {/* Daily Reminder */}
