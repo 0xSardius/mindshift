@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 // Schema for the AI response
 const AffirmationResponseSchema = z.object({
@@ -74,10 +79,39 @@ export async function POST(req: Request) {
       );
     }
 
+    // Get user patterns for personalization (Pro feature)
+    let patternContext = "";
+    try {
+      const { userId } = await auth();
+      if (userId) {
+        const patterns = await convex.query(api.queries.getUserPatternsByClerkId, { clerkId: userId });
+
+        if (patterns?.isPro && patterns.totalTransformations >= 3) {
+          const distortions = patterns.topDistortions;
+          const themes = patterns.topThemes;
+
+          if (distortions.length > 0 || themes.length > 0) {
+            patternContext = `
+
+## USER CONTEXT (Pro User - Personalize based on their patterns):
+This user has completed ${patterns.totalTransformations} transformations.
+${distortions.length > 0 ? `- They frequently struggle with: ${distortions.join(", ")}` : ""}
+${themes.length > 0 ? `- Common themes in their thoughts: ${themes.join(", ")}` : ""}
+- Consider addressing root patterns, not just this specific thought.
+- Reference their recurring struggles when it makes the affirmation more powerful.
+- Make affirmations feel personally relevant to their journey.`;
+          }
+        }
+      }
+    } catch (authError) {
+      // Auth errors shouldn't block generation - just skip personalization
+      console.log("Could not fetch user patterns for personalization:", authError);
+    }
+
     const { object } = await generateObject({
       model: anthropic("claude-sonnet-4-5"),
       schema: AffirmationResponseSchema,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT + patternContext,
       prompt: `Transform this negative self-talk into empowering affirmations:
 
 "${negativeThought}"

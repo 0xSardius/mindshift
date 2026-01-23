@@ -531,3 +531,84 @@ export const getUserPatterns = query({
     };
   },
 });
+
+// Get user patterns by Clerk ID (for API routes without auth context)
+export const getUserPatternsByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user) {
+      return null;
+    }
+
+    const isPro = user.tier === "pro" || user.tier === "elite";
+
+    // Only return patterns for Pro users
+    if (!isPro) {
+      return {
+        isPro: false,
+        topDistortions: [],
+        topThemes: [],
+        totalTransformations: 0,
+      };
+    }
+
+    // Get all affirmations for this user
+    const affirmations = await ctx.db
+      .query("affirmations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const totalTransformations = affirmations.length;
+
+    if (totalTransformations < 3) {
+      // Need at least 3 transformations to show meaningful patterns
+      return {
+        isPro: true,
+        topDistortions: [],
+        topThemes: [],
+        totalTransformations,
+      };
+    }
+
+    // Aggregate cognitive distortions
+    const distortionCounts: Record<string, number> = {};
+    for (const affirmation of affirmations) {
+      if (affirmation.cognitiveDistortions) {
+        for (const distortion of affirmation.cognitiveDistortions) {
+          distortionCounts[distortion] = (distortionCounts[distortion] || 0) + 1;
+        }
+      }
+    }
+
+    // Aggregate themes
+    const themeCounts: Record<string, number> = {};
+    for (const affirmation of affirmations) {
+      if (affirmation.themeCategory) {
+        themeCounts[affirmation.themeCategory] = (themeCounts[affirmation.themeCategory] || 0) + 1;
+      }
+    }
+
+    // Get top 3 distortions and themes for context injection
+    const topDistortions = Object.entries(distortionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([type]) => type);
+
+    const topThemes = Object.entries(themeCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([theme]) => theme);
+
+    return {
+      isPro: true,
+      topDistortions,
+      topThemes,
+      totalTransformations,
+    };
+  },
+});
