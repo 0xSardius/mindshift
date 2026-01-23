@@ -122,7 +122,7 @@ Detailed specs are in `app/documentation/`:
 | **Gamification** | Full (50 levels, basic badges) | Full + exclusive Pro badges |
 | **Leaderboard** | View only | Custom username, compete |
 | **Insights** | Basic stats | Weekly AI insight email |
-| **Extras** | - | Streak Shield (1 miss/week), export, dark mode |
+| **Extras** | Dark mode | Streak Shield (1 miss/week), export |
 
 ### Why This Model
 
@@ -152,7 +152,7 @@ https://mindshift-zeta.vercel.app/
 | Custom username | ✅ Done | Gated in `updateUserProfile` mutation |
 | Streak Shield | ✅ Done | Logic in `completePractice` - allows 1 missed day per week for Pro users |
 | Export affirmations | ✅ Done | CSV export button in Library for Pro users |
-| Dark mode (Pro-gated) | ✅ Done | Gated in Profile settings with lock icon |
+| Dark mode | ✅ Done | Available for all users in Profile settings |
 | AI Pattern Learning | 🟡 In Progress | Phase 1-2 done (query + UI), Phase 3-4 pending (context injection + meta-affirmations) |
 | Advanced analytics | ❌ Backlog | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
 | Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
