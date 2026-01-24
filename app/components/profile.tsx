@@ -32,6 +32,7 @@ import { toast } from "sonner"
 import { TierCard } from "./tier-card"
 import { PracticeHeatmap } from "./practice-heatmap"
 import { PatternInsights } from "./pattern-insights"
+import { RootPatterns } from "./root-patterns"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { BADGE_TYPES } from "@/convex/lib/badgeTypes"
@@ -288,6 +289,12 @@ export function Profile({ user, stats, badges, practiceData = [], patterns }: Pr
 
       {/* Pattern Insights (Pro Feature) */}
       <PatternInsights patterns={patterns || null} />
+
+      {/* Root Patterns - Meta-Affirmations (Pro Feature) */}
+      <RootPatterns
+        isPro={isPro}
+        totalTransformations={patterns?.totalTransformations || 0}
+      />
 
       {/* Badges Section */}
       <div className="space-y-3">

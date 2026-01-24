@@ -153,7 +153,7 @@ https://mindshift-zeta.vercel.app/
 | Streak Shield | ✅ Done | Logic in `completePractice` - allows 1 missed day per week for Pro users |
 | Export affirmations | ✅ Done | CSV export button in Library for Pro users |
 | Dark mode | ✅ Done | Available for all users in Profile settings |
-| AI Pattern Learning | 🟡 In Progress | Phase 1-2 done (query + UI), Phase 3-4 pending (context injection + meta-affirmations) |
+| AI Pattern Learning | ✅ Done | All phases complete: pattern query, insights UI, context-aware generation, meta-affirmations |
 | Advanced analytics | ❌ Backlog | Add weekly/monthly charts, practice patterns, cognitive distortion breakdown |
 | Custom categories | ❌ Backlog | Add category field to affirmations schema, filter in Library |
 | Save multiple affirmations | ❌ Backlog | Allow users to save multiple AI-generated affirmations per transformation |
@@ -221,28 +221,18 @@ originalThought: string         // The raw negative input
 - Three states: empty, free (blurred teaser), Pro (full view)
 - Integrated into Profile page after Practice Heatmap
 
-#### Phase 3: Context-Aware Generation (Medium effort) - TODO
-Modify `/api/generate/route.ts`:
-```typescript
-// For Pro users, fetch their pattern history
-const patterns = await convex.query(api.queries.getUserPatterns)
+#### Phase 3: Context-Aware Generation ✅ COMPLETE
+`app/api/generate/route.ts` modified to:
+- Fetch user patterns via `getUserPatternsByClerkId` query
+- Inject pattern context into AI prompt for Pro users with 3+ transformations
+- AI now references user's recurring distortions and themes when generating affirmations
 
-// Inject into AI prompt
-const systemPrompt = `
-${BASE_PROMPT}
-
-USER CONTEXT (use to personalize):
-- This user frequently struggles with: ${patterns.topDistortions.map(d => d.type).join(', ')}
-- Common themes: ${patterns.topThemes.map(t => t.theme).join(', ')}
-- Consider addressing root patterns, not just this specific thought.
-`
-```
-
-#### Phase 4: Meta-Affirmations (Larger effort)
-New feature: "Deep Work" or "Root Patterns"
-- AI analyzes all thoughts and generates 1-3 meta-affirmations
-- Example: "You've logged 12 thoughts about work inadequacy. Here's a root affirmation: 'I am qualified and capable. My contributions have value regardless of others' opinions.'"
-- Could be weekly email (Resend) or in-app section
+#### Phase 4: Meta-Affirmations ✅ COMPLETE
+`app/api/generate-meta/route.ts` + `app/components/root-patterns.tsx`:
+- AI analyzes all thoughts and generates 1-3 root-cause "meta-affirmations"
+- Returns insights: primary pattern, root cause, recommendation
+- "Root Patterns" section in Profile for Pro users with 5+ transformations
+- Save meta-affirmations to library with "root-pattern" theme category
 
 ### UI Mockup Ideas
 
