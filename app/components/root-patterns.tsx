@@ -73,6 +73,7 @@ export function RootPatterns({ isPro, totalTransformations }: RootPatternsProps)
         originalThought: `Root pattern: ${affirmation.targetPattern}`,
         cognitiveDistortions: [affirmation.targetPattern],
         themeCategory: "root-pattern",
+        userEdited: false,
       })
 
       setSavedIds((prev) => new Set([...prev, affirmation.id]))
